@@ -24,7 +24,7 @@ def test():
     print 'Firmware test started'
     fwconfig = parse_firmware_config()
     s = serial.Serial('/dev/ttyUSB0', timeout=0.5, baudrate=fwconfig['BAUD'])
-    s.write('SOChost_readyEOCEOP')
+    s.write('SOCechoEOC1EOP')
     from visexpman.engine.generic import utils
     ct=0
     while not utils.enter_hit():

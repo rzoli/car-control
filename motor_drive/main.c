@@ -1,3 +1,12 @@
+/*Roadmap:
+Echo
+1. capture TEST
+test TEST
+2. timer, timer isr
+3. read adc/temperature
+4. move stdio to I2C (once rpi is available)
+
+*/
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
@@ -31,10 +40,34 @@ FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
 
 TC0_t* left_motor;
 TC0_t* right_motor;
+bool rpm_capture_overflow = false;
+bool new_rpm_value_left = false;
+uint16_t rpm_capture_left, rpm_capture_right;
+
+ISR(TCC1_OVF_vect)
+{
+    //Does it really happen?TEST
+	rpm_capture_overflow=true;
+}
+
+ISR(TCC1_CCA_vect)
+{
+	TCC1.CNT=0U;
+	if (!rpm_capture_overflow)
+	{
+		rpm_capture_left = TCC1.CCA;
+        new_rpm_value_left = true;
+	}
+	else
+	{
+        //Does it really happen?TEST
+		rpm_capture_left = RPM_MEASUREMENT_COUNTER_RELOAD_VALUE;
+		rpm_capture_overflow=false;
+	}
+}
 
 void init_mcu(void)
 {
-    
     stdout = &mystdout;
     // Clock
     CLKSYS_Enable( OSC_RC2MEN_bm );
@@ -76,6 +109,17 @@ void init_mcu(void)
     left_motor->CCA = 0;
     left_motor->CCB = 0;//(int)(0.13*PWM_PER_VALUE);
     
+    //Input capture/rpm measurement
+    //other channel might be TCE1
+    TCC1.PER = RPM_MEASUREMENT_COUNTER_RELOAD_VALUE;
+	TCC1.CTRLA |= TC_CLKSEL_DIV1_gc; 
+    TCC1.CTRLB |= 0x10; /* select capture channel A */
+    TCC1.CTRLD |= TC_EVACT_CAPT_gc | TC_EVSEL_CH0_gc; /* select capture event and event channel 0 */
+	EVSYS.CH0MUX = EVSYS_CHMUX_PORTE_PIN0_gc; /* portE pin 0 */
+	PORTE.DIRCLR = 0x1; /* PE0 is input */
+	PORTE.PIN0CTRL = PORT_ISC_RISING_gc; /* sense rising edges */
+	TCC1.INTCTRLA = 1;
+	TCC1.INTCTRLB = 1;//later: medium priorityTEST
     
     /* Enable PMIC interrupt level low. */
 	PMIC.CTRL |= PMIC_LOLVLEX_bm;
@@ -134,6 +178,7 @@ void parser(void)
     static char parameters[MAX_N_PARAMS][MAX_PARAMLENGTH];
     char *p_start, *p_end, *p_soc, *p_eoc, *p_eop;
     static uint16_t pulsewidth_forward, pulsewidth_reverse;
+    static uint16_t buffer;
     char channel;
     c = getchr();
     if (c > 0)
@@ -185,7 +230,6 @@ void parser(void)
                         p_start = p_end + 1; 
                         if (i >= MAX_N_PARAMS)
                         {
-                            printf("3 %s\r\n", command);
                             break;
                         }
                     } 
@@ -197,14 +241,14 @@ void parser(void)
                 }
                 parse_buffer_index = 0;
                 //Call functions
-                if (strcmp(command, "host_ready") == 0)
+                if (strcmp(command, "echo") == 0)
                 {
                     host_ready = true;
-                    printf("host ready OK");
+                    sscanf(parameters[0], "%i", &buffer);
+                    printf("SOCechoEOC%iEOP",buffer);
                 }
-                if (strcmp(command, "set_pwm") == 0)
+                else if (strcmp(command, "set_pwm") == 0)
                 {
-//                    sscanf(parameters[0], "%i", &channel);
                     channel = parameters[0][0];
                     sscanf(parameters[1], "%i", &pulsewidth_forward);
                     sscanf(parameters[2], "%i", &pulsewidth_reverse);
@@ -241,9 +285,11 @@ int main(void)
             printf(" %i\r\n", (int)(PWM_PER_VALUE));
             first_run=true;
         }
-//        printf("%i",PWM_PER_VALUE);
-        
+        if (new_rpm_value_left)//?Make sure that at higher speeds capture event interval is lower than the transmission time of this message
+        {
+            printf("SOCrpmEOCL,%dEOP",rpm_capture_left);
+            new_rpm_value_left=false;
+        }
   }
 }
-//#2. upload to github
-//#3. capture module
+
