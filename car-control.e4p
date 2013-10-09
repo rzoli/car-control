@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-4.6.dtd">
-<!-- eric4 project file for project Car control -->
-<!-- Saved: 2013-10-05, 21:20:00 -->
+<!-- eric4 project file for project car-control -->
+<!-- Saved: 2013-10-09, 16:52:33 -->
 <!-- Copyright (C) 2013 ,  -->
 <Project version="4.6">
   <Language>en</Language>
@@ -25,6 +25,8 @@
     <Source>motor_drive/utils.c</Source>
     <Source>motor_drive/utils.h</Source>
     <Source>motor_drive/firmware_test.py</Source>
+    <Source>command_interface.py</Source>
+    <Source>unittest_aggregator.py</Source>
   </Sources>
   <Forms>
   </Forms>

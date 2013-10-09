@@ -46,5 +46,5 @@ if __name__ == "__main__":
     elif compile() and '--download' in sys.argv:
         program_device()
     if '--test' in sys.argv:
-        from motor_drive import firmware_test
-        firmware_test.test()
+        import unittest_aggregator
+        unittest_aggregator.test()

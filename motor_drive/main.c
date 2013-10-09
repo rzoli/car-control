@@ -42,16 +42,17 @@ TC0_t* left_motor;
 TC0_t* right_motor;
 bool rpm_capture_overflow = false;
 bool new_rpm_value_left = false;
+bool enable_measurement_messages = false;
 uint16_t rpm_capture_left, rpm_capture_right;
 
 ISR(TCC1_OVF_vect)
 {
-    //Does it really happen?TEST
 	rpm_capture_overflow=true;
 }
 
 ISR(TCC1_CCA_vect)
 {
+    printf("*");
 	TCC1.CNT=0U;
 	if (!rpm_capture_overflow)
 	{
@@ -247,6 +248,17 @@ void parser(void)
                     sscanf(parameters[0], "%i", &buffer);
                     printf("SOCechoEOC%iEOP",buffer);
                 }
+                else if (strcmp(command, "enable_messages") == 0)
+                {
+                    if (parameters[0] == '1')
+                    {
+                        enable_measurement_messages = true;
+                    }
+                    else if (parameters[0] == '0')
+                    {
+                        enable_measurement_messages = false;
+                    }
+                }
                 else if (strcmp(command, "set_pwm") == 0)
                 {
                     channel = parameters[0][0];
@@ -285,11 +297,13 @@ int main(void)
             printf(" %i\r\n", (int)(PWM_PER_VALUE));
             first_run=true;
         }
-        if (new_rpm_value_left)//?Make sure that at higher speeds capture event interval is lower than the transmission time of this message
+        if (enable_measurement_messages)
         {
-            printf("SOCrpmEOCL,%dEOP",rpm_capture_left);
-            new_rpm_value_left=false;
+            if (new_rpm_value_left)//?Make sure that at higher speeds capture event interval is lower than the transmission time of this message
+            {
+                printf("SOCrpmEOCL,%dEOP",rpm_capture_left);
+                new_rpm_value_left=false;
+            }
         }
   }
 }
-
