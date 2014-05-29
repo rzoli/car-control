@@ -76,8 +76,8 @@ void init_mcu(void)
     do {} while ( CLKSYS_IsReady( OSC_RC2MRDY_bm ) == 0 );
     CLKSYS_Main_ClockSource_Select( CLK_SCLKSEL_RC2M_gc );
     //IO ports
-    PORTA.DIRSET = 1<<GREEN_LED | 1 << BLUE_LED;
-    PORTA.OUTSET = 1<<GREEN_LED | 1 << BLUE_LED;
+    PORTA.DIRSET = 1<<GREEN_LED | 1 << RED_LED;
+    PORTA.OUTSET = 1<<GREEN_LED | 1 << RED_LED;
     //USART C0
     /* PC3 (TXD0) as output. */
 	PORTC.DIRSET   = PIN3_bm;
@@ -285,9 +285,10 @@ int main(void)
     SET_GREEN_LED;
     _delay_ms(500);
     CLEAR_GREEN_LED;
-    CLEAR_BLUE_LED;
+    SET_RED_LED;
+    _delay_ms(100);
+    CLEAR_RED_LED;
     _delay_ms(1000);
-    
     
     while(1){ // loop forever
         parser();
