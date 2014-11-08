@@ -11,6 +11,7 @@ struct command_t {
         unsigned char nparameters;
     
 };
+
 class Dummy
 {
 };

@@ -20,7 +20,7 @@ test TEST
 #include "utils.h"
 #include <util/delay.h>
 #include <string.h>
-//#include "../command_protocol.h"
+#include "../command_protocol.h"
 
 ISR(USARTC0_RXC_vect)
 {
@@ -37,7 +37,7 @@ static int uart_putchar(char c, FILE *stream) {
     return 0;
 }
 
-FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
+//FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
 
 TC0_t* left_motor;
 TC0_t* right_motor;
@@ -70,7 +70,7 @@ ISR(TCC1_CCA_vect)
 
 void init_mcu(void)
 {
-    stdout = &mystdout;
+//    stdout = &mystdout;
     // Clock
     CLKSYS_Enable( OSC_RC2MEN_bm );
     CLKSYS_Prescalers_Config( CLK_PSADIV_1_gc, CLK_PSBCDIV_1_1_gc );
@@ -251,14 +251,14 @@ void parser(void)
                 }
                 else if (strcmp(command, "enable_messages") == 0)
                 {
-                    if (parameters[0] == '1')
-                    {
-                        enable_measurement_messages = true;
-                    }
-                    else if (parameters[0] == '0')
-                    {
-                        enable_measurement_messages = false;
-                    }
+//                    if (parameters[0] == '1')
+//                    {
+//                        enable_measurement_messages = true;
+//                    }
+//                    else if (parameters[0] == '0')
+//                    {
+//                        enable_measurement_messages = false;
+//                    }
                 }
                 else if (strcmp(command, "set_pwm") == 0)
                 {
@@ -279,7 +279,11 @@ void parser(void)
 bool first_run = false;
 
 int main(void)
-{       
+{    
+    CommandParser cp;
+    cp.put('a');
+    cp.parse();
+    
     init_mcu();
     CLEAR_GREEN_LED;
     _delay_ms(500);

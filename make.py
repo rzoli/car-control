@@ -2,7 +2,7 @@ import sys
 import os.path
 import os
 import subprocess
-source_files = ['main.c', 'clksys_driver.c',  'usart_driver.c',  'utils.c']#'usart_driver.c',  'clksys_driver.c']
+source_files = ['main.cpp', 'clksys_driver.c',  'usart_driver.c',  'utils.c', '../command_protocol.cpp']#'usart_driver.c',  'clksys_driver.c']
 output_file = 'fw'
 mcu = 'atxmega32a4'
 optimization_level = 's'
@@ -20,7 +20,7 @@ def compile():
     objects = ''
     for f in source_files:
         f = os.path.join(firmware_folder,  f)
-        subprocess.call('avr-gcc -ffunction-sections -mmcu={0} -Wall -O{1} -c -o {2}.elf {3}'.format(mcu, optimization_level, f.split('.')[0],  f),
+        subprocess.call('avr-g++ -ffunction-sections -mmcu={0} -Wall -O{1} -c -o {2}.elf {3}'.format(mcu, optimization_level, f.split('.')[0],  f),
                          shell=True)
         objects += ' ' +f.replace('.c', '.elf')
         if not os.path.exists(f.replace('.c', '.elf')):

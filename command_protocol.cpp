@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <string.h>
 #include "command_protocol.h"
-#include <iostream>
-using namespace std;
+//#include <iostream>
+//using namespace std;
 
 CommandParser::CommandParser()
 {
@@ -37,14 +37,14 @@ void CommandParser::put(char c)
 
 void CommandParser::prncmd()
 {
-    cout<<"\n---------------------\n";
-    cout << command.name<< '(';
-    for(i=0;i<command.nparameters;i++)
-    {
-        cout << command.parameters[i]<<',';
-    }
-    cout<<")"; 
-    cout<<"\n---------------------\n";
+//    cout<<"\n---------------------\n";
+//    cout << command.name<< '(';
+//    for(i=0;i<command.nparameters;i++)
+//    {
+//        cout << command.parameters[i]<<',';
+//    }
+//    cout<<")"; 
+//    cout<<"\n---------------------\n";
 }
 bool CommandParser::parse()
 {

@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE Tasks SYSTEM "Tasks-4.2.dtd">
+<!-- eric4 tasks file for project robot-control -->
+<!-- Saved: 2014-11-08, 18:31:24 -->
+<Tasks version="4.2">
+  <Task priority="1" completed="False" bugfix="False">
+    <Summary>TODO: send error code</Summary>
+    <Description></Description>
+    <Created>2014-11-08, 18:17:03</Created>
+    <Resource>
+      <Filename>command_protocol.cpp</Filename>
+      <Linenumber>30</Linenumber>
+    </Resource>
+  </Task>
+</Tasks>
