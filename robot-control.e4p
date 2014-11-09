@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-4.6.dtd">
 <!-- eric4 project file for project robot-control -->
-<!-- Saved: 2014-11-08, 18:31:24 -->
+<!-- Saved: 2014-11-09, 11:23:12 -->
 <!-- Copyright (C) 2014 ,  -->
 <Project version="4.6">
   <Language>en</Language>
@@ -16,19 +16,21 @@
     <Source>make.py</Source>
     <Source>motor_drive/__init__.py</Source>
     <Source>motor_drive/avr_compiler.h</Source>
-    <Source>motor_drive/clksys_driver.c</Source>
     <Source>motor_drive/clksys_driver.h</Source>
     <Source>motor_drive/config.h</Source>
     <Source>motor_drive/main.c</Source>
-    <Source>motor_drive/usart_driver.c</Source>
     <Source>motor_drive/usart_driver.h</Source>
-    <Source>motor_drive/utils.c</Source>
     <Source>motor_drive/utils.h</Source>
     <Source>motor_drive/firmware_test.py</Source>
     <Source>command_interface.py</Source>
     <Source>unittest_aggregator.py</Source>
     <Source>command_protocol.cpp</Source>
     <Source>command_protocol.h</Source>
+    <Source>motor_drive/utils.cpp</Source>
+    <Source>motor_drive/usart_driver.cpp</Source>
+    <Source>motor_drive/clksys_driver.cpp</Source>
+    <Source>motor_drive/comm.h</Source>
+    <Source>motor_drive/comm.cpp</Source>
   </Sources>
   <Forms>
   </Forms>
@@ -40,6 +42,8 @@
   </Interfaces>
   <Others>
     <Other>motor_drive/main.cpp</Other>
+    <Other>motor_drive/comm.cpp</Other>
+    <Other>motor_drive/comm.h</Other>
   </Others>
   <Vcs>
     <VcsType>None</VcsType>

@@ -18,9 +18,22 @@ test TEST
 #include "clksys_driver.h"
 #include "usart_driver.h"
 #include "utils.h"
+#include "comm.h"
 #include <util/delay.h>
 #include <string.h>
 #include "../command_protocol.h"
+
+
+//FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
+
+TC0_t* left_motor;
+TC0_t* right_motor;
+bool rpm_capture_overflow = false;
+bool new_rpm_value_left = false;
+bool enable_measurement_messages = false;
+uint16_t rpm_capture_left, rpm_capture_right;
+
+extern USART_data_t USART_data;
 
 ISR(USARTC0_RXC_vect)
 {
@@ -31,20 +44,6 @@ ISR(USARTC0_DRE_vect)
 {
 	USART_DataRegEmpty(&USART_data);
 }
-
-static int uart_putchar(char c, FILE *stream) {
-    USART_TXBuffer_PutByte(&USART_data, c);
-    return 0;
-}
-
-//FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
-
-TC0_t* left_motor;
-TC0_t* right_motor;
-bool rpm_capture_overflow = false;
-bool new_rpm_value_left = false;
-bool enable_measurement_messages = false;
-uint16_t rpm_capture_left, rpm_capture_right;
 
 ISR(TCC1_OVF_vect)
 {
@@ -167,7 +166,7 @@ uint16_t pulsewidth_forward, uint16_t pulsewidth_reverse: 1 = 0.1% duty cycle.
     printf("SOCset_pwmEOC%c,%i,%i,%i,%iEOP", channel,forward_register,reverse_register,pulsewidth_forward,pulsewidth_reverse);
 }
 
-#define PARSE_BUFFER_SIZE 32
+//#define PARSE_BUFFER_SIZE 32
 char parse_buffer[PARSE_BUFFER_SIZE];
 uint8_t parse_buffer_index = 0;
 bool host_ready = false;
@@ -182,7 +181,7 @@ void parser(void)
     static uint16_t pulsewidth_forward, pulsewidth_reverse;
     static uint16_t buffer;
     char channel;
-    c = getchr();
+    c = 'a';//getchr();
     if (c > 0)
     {
         //Reset parse buffer
@@ -280,10 +279,7 @@ bool first_run = false;
 
 int main(void)
 {    
-    CommandParser cp;
-    cp.put('a');
-    cp.parse();
-    
+   
     init_mcu();
     CLEAR_GREEN_LED;
     _delay_ms(500);
@@ -294,21 +290,32 @@ int main(void)
     _delay_ms(100);
     CLEAR_RED_LED;
     _delay_ms(1000);
+    
+    CommandParser cp;
+    cp.put('a');
+    cp.parse();
+    Comm comm(&USART_data);
+    comm.uart_putchar('a');
+    comm << "OK"<<1;
+
+    
     while(1){ // loop forever
-        parser();
-        if (host_ready && !first_run)
-        {
-            printf("start1\r\n");
-            printf(" %i\r\n", (int)(PWM_PER_VALUE));
-            first_run=true;
-        }
-        if (enable_measurement_messages)
-        {
-            if (new_rpm_value_left)//?Make sure that at higher speeds capture event interval is lower than the transmission time of this message
-            {
-                printf("SOCrpmEOCL,%dEOP",rpm_capture_left);
-                new_rpm_value_left=false;
-            }
-        }
+        comm.uart_putchar(comm.getchr());
+    
+//        parser();
+//        if (host_ready && !first_run)
+//        {
+//            printf("start1\r\n");
+//            printf(" %i\r\n", (int)(PWM_PER_VALUE));
+//            first_run=true;
+//        }
+//        if (enable_measurement_messages)
+//        {
+//            if (new_rpm_value_left)//?Make sure that at higher speeds capture event interval is lower than the transmission time of this message
+//            {
+//                printf("SOCrpmEOCL,%dEOP",rpm_capture_left);
+//                new_rpm_value_left=false;
+//            }
+//        }
   }
 }

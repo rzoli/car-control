@@ -2,7 +2,7 @@ import sys
 import os.path
 import os
 import subprocess
-source_files = ['main.cpp', 'clksys_driver.c',  'usart_driver.c',  'utils.c', '../command_protocol.cpp']#'usart_driver.c',  'clksys_driver.c']
+source_files = ['main.cpp', 'clksys_driver.cpp',  'usart_driver.cpp',  'command_protocol.cpp', 'comm.cpp']
 output_file = 'fw'
 mcu = 'atxmega32a4'
 optimization_level = 's'
@@ -19,11 +19,13 @@ def compile():
     clean()
     objects = ''
     for f in source_files:
-        f = os.path.join(firmware_folder,  f)
-        subprocess.call('avr-g++ -ffunction-sections -mmcu={0} -Wall -O{1} -c -o {2}.elf {3}'.format(mcu, optimization_level, f.split('.')[0],  f),
+        if not os.path.exists(f):
+            f = os.path.join(firmware_folder,  f)
+        subprocess.call('avr-gcc -Wno-write-strings -ffunction-sections -mmcu={0} -Wall -O{1} -c -o {2}.elf {3}'.format(mcu, optimization_level, f.split('.')[0],  f),
                          shell=True)
-        objects += ' ' +f.replace('.c', '.elf')
-        if not os.path.exists(f.replace('.c', '.elf')):
+        ext = '.' + f.split('.')[1]
+        objects += ' ' +f.replace(ext, '.elf')
+        if not os.path.exists(f.replace(ext, '.elf')):
             return False
     subprocess.call('avr-gcc -Wl,-gc-sections -mmcu={0} -Wall {1} -o {2}.elf' .format(mcu, objects,  output_file), shell=True)
     subprocess.call('avr-objcopy -j .text -j .data -O ihex {0}.elf {0}.hex'.format(output_file), shell=True)

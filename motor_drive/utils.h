@@ -1,3 +1,3 @@
-USART_data_t USART_data;
+//USART_data_t USART_data;
 
-char getchr(void);
+//char getchr(void);
