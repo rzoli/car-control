@@ -7,15 +7,10 @@
 #include "utils.h"
 #include "comm.h"
 
-USART_data_t USART_data;
-
-Comm::Comm(USART_data_t* usart_data)
-{
-    usart_data = usart_data;
-}
+USART_data_t USART_data;//If passed as pointer to Comm, does not work
 
 int Comm::uart_putchar(char c) {
-    USART_TXBuffer_PutByte(usart_data, c);
+    USART_TXBuffer_PutByte(&USART_data, c);
     return 0;
 }
 
@@ -23,8 +18,8 @@ char Comm::getchr(void)
 {    
 	char res = 0U;
     
-	 if (USART_RXBufferData_Available(usart_data)) {
-			res = USART_RXBuffer_GetByte(usart_data);
+	 if (USART_RXBufferData_Available(&USART_data)) {
+			res = USART_RXBuffer_GetByte(&USART_data);
 	 }
 	 return (res);
 }

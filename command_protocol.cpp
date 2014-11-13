@@ -36,7 +36,7 @@ void CommandParser::put(char c)
 }
 
 void CommandParser::prncmd()
-{
+{//TODO: make it compatible with both x86 and avr
 //    cout<<"\n---------------------\n";
 //    cout << command.name<< '(';
 //    for(i=0;i<command.nparameters;i++)
@@ -46,6 +46,7 @@ void CommandParser::prncmd()
 //    cout<<")"; 
 //    cout<<"\n---------------------\n";
 }
+
 bool CommandParser::parse()
 {
 //    unsigned char command_end,parameter_start;

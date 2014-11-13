@@ -92,7 +92,7 @@ void init_mcu(void)
 	/* Enable RXC interrupt. */
 	USART_RxdInterruptLevel_Set(USART_data.usart, USART_RXCINTLVL_LO_gc);
 	
-	/* set baud */
+	/* set baud 115200 */
 	USART_Baudrate_Set(&USARTC0, 149 , -7);
     USARTC0.CTRLB |= USART_CLK2X_bm;
 
@@ -280,6 +280,9 @@ bool first_run = false;
 int main(void)
 {    
    
+    char c;
+    CommandParser cp; //command parser
+    Comm comm; //standard io using uart
     init_mcu();
     CLEAR_GREEN_LED;
     _delay_ms(500);
@@ -290,17 +293,18 @@ int main(void)
     _delay_ms(100);
     CLEAR_RED_LED;
     _delay_ms(1000);
-    
-    CommandParser cp;
-    cp.put('a');
-    cp.parse();
-    Comm comm(&USART_data);
-    comm.uart_putchar('a');
-    comm << "OK"<<1;
-
-    
     while(1){ // loop forever
-        comm.uart_putchar(comm.getchr());
+        c = comm.getchr();
+        if (c>0)
+            cp.put(c);
+            if (cp.parse()) {
+                comm << cp.command.name<<"\t"<<cp.command.nparameters<<"\n";
+            }
+//        _delay_ms(500);
+        
+//        SET_GREEN_LED;
+//        _delay_ms(50);
+//        CLEAR_GREEN_LED;
     
 //        parser();
 //        if (host_ready && !first_run)

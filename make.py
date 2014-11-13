@@ -32,6 +32,7 @@ def compile():
     if not os.path.exists(output_file+'.hex'):
         return False
     subprocess.call('avr-size {0}.elf'.format(output_file), shell=True)
+    #TODO: print time
     print 'Build OK'
     return True
     
