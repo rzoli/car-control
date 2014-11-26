@@ -21,7 +21,7 @@ test TEST
 #include "comm.h"
 #include <util/delay.h>
 #include <string.h>
-#include "../command_protocol.h"
+//#include "../command_protocol.h"
 
 
 //FILE mystdout = FDEV_SETUP_STREAM(uart_putchar, NULL, _FDEV_SETUP_WRITE);
@@ -281,8 +281,9 @@ int main(void)
 {    
    
     char c;
-    CommandParser cp; //command parser
-    Comm comm; //standard io using uart
+//    CommandParser cp; //command parser
+//    Comm comm; //standard io using uart
+    DeviceCommands dc(left_motor,right_motor);
     init_mcu();
     CLEAR_GREEN_LED;
     _delay_ms(500);
@@ -294,12 +295,13 @@ int main(void)
     CLEAR_RED_LED;
     _delay_ms(1000);
     while(1){ // loop forever
-        c = comm.getchr();
-        if (c>0)
-            cp.put(c);
-            if (cp.parse()) {
-                comm << cp.command.name<<"\t"<<cp.command.nparameters<<"\n";
-            }
+        dc.next_command();
+//        c = comm.getchr();
+//        if (c>0)
+//            cp.put(c);
+//            if (cp.parse()) {
+//                comm << cp.command.name<<"\t"<<cp.command.nparameters<<"\n";
+//            }
 //        _delay_ms(500);
         
 //        SET_GREEN_LED;
