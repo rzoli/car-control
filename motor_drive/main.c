@@ -107,9 +107,9 @@ void init_mcu(void)
     PORTC.DIRSET   = PIN0_bm|PIN1_bm;
     left_motor->CTRLA = TC_CLKSEL_DIV1_gc;
     left_motor->CTRLB = TC_WGMODE_SS_gc | 0x30; //A and B channels are enabled
-    left_motor->PER = PWM_PER_VALUE;
+    left_motor->PER = PWM_PERIOD_REGISTER_VALUE;
     left_motor->CCA = 0;
-    left_motor->CCB = 0;//(int)(0.13*PWM_PER_VALUE);
+    left_motor->CCB = 0;//(int)(0.13*PWM_PERIOD_REGISTER_VALUE);
     
     //Input capture/rpm measurement
     //other channel might be TCE1
@@ -145,8 +145,8 @@ uint16_t pulsewidth_forward, uint16_t pulsewidth_reverse: 1 = 0.1% duty cycle.
         printf("SOCset_pwmEOC%iEOP", MORE_THAN_100_PERCENT_DUTY_CYCLE_REQUESTED);
         return;
     }
-    forward_register = (int)(pulsewidth_forward*1e-3*PWM_PER_VALUE);
-    reverse_register = (int)(pulsewidth_reverse*1e-3*PWM_PER_VALUE);
+    forward_register = (int)(pulsewidth_forward*1e-3*PWM_PERIOD_REGISTER_VALUE);
+    reverse_register = (int)(pulsewidth_reverse*1e-3*PWM_PERIOD_REGISTER_VALUE);
     switch (channel)
     {
         case 'L':
@@ -295,7 +295,7 @@ int main(void)
         if (host_ready && !first_run)
         {
             printf("start1\r\n");
-            printf(" %i\r\n", (int)(PWM_PER_VALUE));
+            printf(" %i\r\n", (int)(PWM_PERIOD_REGISTER_VALUE));
             first_run=true;
         }
         if (enable_measurement_messages)

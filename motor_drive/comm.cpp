@@ -10,6 +10,7 @@
 //#include "../command_protocol.h"
 
 USART_data_t USART_data;//If passed as pointer to Comm, does not work
+TC0_t* motor;
 
 int Comm::uart_putchar(char c) {
     USART_TXBuffer_PutByte(&USART_data, c);
@@ -43,10 +44,8 @@ Comm& Comm::operator <<(unsigned int uiVal)
 	return *this;
 }
 
-DeviceCommands::DeviceCommands(TC0_t* left_motor, TC0_t* right_motor)
+DeviceCommands::DeviceCommands(void)
 {
-    right_motor = right_motor;
-    left_motor = left_motor;
     //TODO: pointers to rpm counters
 }
 
@@ -55,34 +54,37 @@ void DeviceCommands::echo(uint8_t par)
     *this<<"echo("<<par<<")";
 }
 
-void DeviceCommands::set_pwm(char channel, uint16_t pulsewidth_forward, uint16_t pulsewidth_reverse)
+void DeviceCommands::set_pwm(uint8_t channel, uint16_t pulsewidth_forward, uint16_t pulsewidth_backward)
 {
     static int forward_register, reverse_register;
-    if ((pulsewidth_forward > 1000) || (pulsewidth_reverse > 1000))
+    if ((pulsewidth_forward > 1000) || (pulsewidth_backward > 1000))
     {
         *this<<"set_pwm("<<MORE_THAN_100_PERCENT_DUTY_CYCLE_REQUESTED << ")";
         return;
     }
-    forward_register = (int)(pulsewidth_forward*1e-3*PWM_PER_VALUE);
-    reverse_register = (int)(pulsewidth_reverse*1e-3*PWM_PER_VALUE);
+    forward_register = (int)(pulsewidth_forward*1e-3*PWM_PERIOD_REGISTER_VALUE);
+    reverse_register = (int)(pulsewidth_backward*1e-3*PWM_PERIOD_REGISTER_VALUE);
+    if (pulsewidth_forward==0)
+        forward_register = 0;
+    if (pulsewidth_backward==0)
+        reverse_register = 0;
     switch (channel)
     {
-        case 'L':
+        case LEFT_MOTOR:
             //Left side motor control
-            left_motor->CCA = forward_register;
-            left_motor->CCB = reverse_register;
+            motor->CCA = forward_register;
+            motor->CCB = reverse_register;
             break;
-        case 'R':
+        case RIGHT_MOTOR:
             //Right side motor control
-            right_motor->CCA = forward_register;
-            right_motor->CCB = reverse_register;
-            *this<<"set_pwm("<< WARNING_RIGHT_MOTOR_NOT_CONFIGURED << ")";
+            motor->CCC = forward_register;
+            motor->CCD = reverse_register;
             break;
         default:
             //Do nothing
             break;
     }
-    *this<<"set_pwm("<<channel <<","<<forward_register<<","<<reverse_register<<","<<pulsewidth_forward<<","<<pulsewidth_reverse<<")";
+    *this<<"set_pwm("<<channel <<","<<forward_register<<","<<reverse_register<<","<<pulsewidth_forward<<","<<pulsewidth_backward<<")";
 }
 
 uint8_t DeviceCommands::next_command(void)
@@ -95,7 +97,7 @@ uint8_t DeviceCommands::next_command(void)
             if (strcmp(command.name, "echo") == 0)
                 echo(command.parameters[0]);
             else if (strcmp(command.name, "set_pwm") == 0)
-                set_pwm((char)command.parameters[0], command.parameters[1], command.parameters[2]);
+                set_pwm((uint8_t)command.parameters[0], command.parameters[1], command.parameters[2]);
             
             
   //          comm << cp.command.name<<"\t"<<cp.command.nparameters<<"\n";

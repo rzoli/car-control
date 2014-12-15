@@ -1,10 +1,12 @@
+import numpy
+import os.path
 import serial
 import time
 import unittest
 import command_interface
 
 def parse_firmware_config():
-    f=open('motor_drive/config.h',  'rt')
+    f=open(os.path.join(os.path.split(__file__)[0],'config.h'),  'rt')
     values = [item.split(' ') for item in f.read().replace('#define ','').split('\n')]
     config = {}
     for value in values:
@@ -25,6 +27,7 @@ class FirmwareTester(unittest.TestCase):
     def setUp(self):
         fwconfig = parse_firmware_config()
         self.s=command_interface.SerialPortHandler('/dev/ttyUSB0',115200,0.1,Queue.Queue(),Queue.Queue(),Queue.Queue())
+        self.mc=mc=MotorControl(self.s)
 
     def tearDown(self):
         #Switch off measurement messages
@@ -59,29 +62,55 @@ class FirmwareTester(unittest.TestCase):
         
     def test_04_read_adc(self):
         self.s.send_command('enable_messages', 1)
+        
+class MotorControl(object):
+    def __init__(self,serial_port):
+        self.s=serial_port
+        self.fwconfig = parse_firmware_config()
+        
+    def set_motor_voltage(self, channel,direction,voltage):
+        '''
+        channel: LEFT, RIGHT
+        direction: FORWARD,BACKWARD
+        voltage: PU 0...1.0
+        '''
+        forward_pw = int((voltage if direction == 'FORWARD' else 0)*1000)
+        backward_pw = int((voltage if direction == 'BACKWARD' else 0)*1000)
+        command = 'set_pwm({0},{1},{2})'.format(self.fwconfig[channel + '_MOTOR'], forward_pw, backward_pw)        
+        self.s.flushInput()
+        self.s.write(command)
+        time.sleep(0.3)
+        response = self.s.read(25)
+        print response
+        #TODO: check response
+        
+    def stop(self):
+        for channel in ['LEFT','RIGHT']:
+            command = 'set_pwm({0},0,0)'.format(self.fwconfig[channel + '_MOTOR'])        
+            self.s.flushInput()
+            self.s.write(command)
+            response = self.s.read(25)
+            print response
+        
+    def set_motor_speed(self,channel,speed):
+        '''
+        '''
+        
 
+        
 def test():
     time.sleep(3.0)
     print 'Firmware test started'
     fwconfig = parse_firmware_config()
     s = serial.Serial('/dev/ttyUSB0', timeout=0.5, baudrate=fwconfig['BAUD'])
-    s.write('SOCechoEOC1EOP')
-    print s.read(100)
-    from visexpman.engine.generic import utils
-    ct=0
-    while not utils.enter_hit():
-        ct+=1
-        if not False:
-            vals = [1000, 200, 100]
-            for val in vals:
-                cmd = 'SOCset_pwmEOCL,500,{0}EOP'.format(val)
-                s.write(cmd)
-                print s.read(10*len(cmd))
-                time.sleep(2)
-            break
-        else:
-            print s.read(400)
-            break
+    #Test motor
+    mc=MotorControl(s)
+    s.write('echo(1)')
+    for v in numpy.arange(0,1,0.1):
+        mc.set_motor_voltage('LEFT', 'BACKWARD', v)
+        time.sleep(1)
+    mc.stop()
+    #Test something else
     
     s.close()
     print 'Firmware test finished'
