@@ -3,6 +3,8 @@ import os.path
 import serial
 import time
 import random
+import tempfile
+import logging
 import pdb
 import unittest
 import command_interface
@@ -38,6 +40,11 @@ class MotorControl(object):
     def parse_parameters(self,s):
         return s.split('(')[1].split(')')[0].split(',')
         
+    def send_command(self,command):
+        self.s.flushInput()
+        self.s.write(command)
+        logging.info('command send: {0}'.format(command))
+        
     def set_motor_voltage(self, channel,direction,voltage):
         '''
         channel: LEFT, RIGHT
@@ -47,10 +54,10 @@ class MotorControl(object):
         forward_pw = int((voltage if direction == 'FORWARD' else 0)*1000)
         backward_pw = int((voltage if direction == 'BACKWARD' else 0)*1000)
         command = 'set_pwm({0},{1},{2})'.format(self.fwconfig[channel + '_MOTOR'], forward_pw, backward_pw)        
-        self.s.flushInput()
-        self.s.write(command)
+        self.send_command(command)
         time.sleep(0.1)
         response = self.s.read(len(command)*2)
+        logging.info('response: {0}'.format(response))
         resp_par = self.parse_parameters(response)
         cmd_par = self.parse_parameters(command)
         return resp_par[0] == cmd_par[0] and resp_par[-2:] == cmd_par[-2:]
@@ -58,9 +65,9 @@ class MotorControl(object):
     def stop(self):
         for channel in ['LEFT','RIGHT']:
             command = 'set_pwm({0},0,0)'.format(self.fwconfig[channel + '_MOTOR'])        
-            self.s.flushInput()
-            self.s.write(command)
+            self.send_command(command)
             response = self.s.read(len(command)+4)
+            logging.info('response: {0}'.format(response))
             time.sleep(0.1)
             return response == command.replace('0)','0,0,0)')
         
@@ -73,30 +80,37 @@ class MotorControl(object):
         if not self.fwconfig.has_key(col_str):
             raise RuntimeError('Invalid led color: {0}', format(color))
         command = 'set_led({0},{1})'.format(self.fwconfig[col_str],int(state))
-        self.s.flushInput()
-        self.s.write(command)
+        self.send_command(command)
         response = self.s.read(len(command))
+        logging.info('response: {0}'.format(response))
         return response == command
         
     def echo(self, value):
         command = 'echo({0})'.format(value)
-        self.s.flushInput()
-        self.s.write(command)
+        self.send_command(command)
         response = self.s.read(len(command))
+        logging.info('response: {0}'.format(response))
         return response == command
         
     def read_adc(self):
         command = 'read_adc()'
-        self.s.flushInput()
-        self.s.write(command)
+        self.send_command(command)
         response = self.s.read(len(command)+2*6)
+        logging.info('response: {0}'.format(response))
         print response
         
     def read_rpm(self):
         pass
 
 class FirmwareTester(unittest.TestCase):
+    def __init__(self,*args, **kwargs):
+        unittest.TestCase.__init__(self,*args, **kwargs)
+        logging.basicConfig(filename=os.path.join(tempfile.gettempdir(), 'robot_firmware_test_{0}.txt'.format(int(time.time()))),
+                    format='%(asctime)s %(levelname)s\t%(message)s',
+                    level=logging.DEBUG)
+    
     def setUp(self):
+        logging.info('Beginning of {0}' .format(self._testMethodName))
         self.serial_port_timeout = 0.5
         fwconfig = parse_firmware_config()
         self.s=serial.Serial('/dev/ttyUSB0', timeout=self.serial_port_timeout, baudrate=fwconfig['BAUD'])
@@ -110,6 +124,7 @@ class FirmwareTester(unittest.TestCase):
         if not self.mc.stop():
             raise RuntimeError('Motors did not stop')
         self.s.close()
+        logging.info('End of {0}'.format(self._testMethodName))
         
     def test_01_echo(self):
         self.assertTrue(self.mc.echo(int(random.random()*255)))
