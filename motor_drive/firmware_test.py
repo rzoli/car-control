@@ -2,6 +2,8 @@ import numpy
 import os.path
 import serial
 import time
+import random
+import pdb
 import unittest
 import command_interface
 
@@ -23,50 +25,18 @@ def parse_firmware_config():
     f.close()
     return config
 
-class FirmwareTester(unittest.TestCase):
-    def setUp(self):
-        fwconfig = parse_firmware_config()
-        self.s=command_interface.SerialPortHandler('/dev/ttyUSB0',115200,0.1,Queue.Queue(),Queue.Queue(),Queue.Queue())
-        self.mc=mc=MotorControl(self.s)
 
-    def tearDown(self):
-        #Switch off measurement messages
-        self.s.send_command('enable_messages', 0)
-        #Make sure that all motors are stopped
-        self.s.send_command('set_pwmt', 'L', 0,0)
-        self.s.send_command('set_pwmt', 'R', 0,0)
-        self.s.terminate=True
-        self.s.join()
-        
-    def _get_response(self,timeout=1.0):
-        time.sleep(timeout)
-        return self.s.parsed_commands.get(timeout=0.01)
-        
-    def test_01_echo(self):
-        import random
-        time.sleep(3.0)#Wait till microcontroller starts up and ready to receive commands
-        id = int(random.random()*1e5)
-        self.s.send_command('echo', id)
-        self.assertEqual(self._get_response(), {'command':'echo', 'args': [str(id)], 'kwargs': {}})
-        
-    def test_02_set_pwm(self):
-        print 'Warning: generated waveform is not tested'
-        self.s.send_command('set_pwm', 'L', 100,100)
-        self.assertEqual(self._get_response(), {'command':'set_pwm', 'args': ['L', str(100), str(100)], 'kwargs': {}})
-
-    def test_03_rpm_measurement(self):
-        '''
-        toggle gpio, read pulsewidth, gpio needs to be connected to capture input
-        '''
-        self.s.send_command('enable_messages', 1)
-        
-    def test_04_read_adc(self):
-        self.s.send_command('enable_messages', 1)
-        
 class MotorControl(object):
+    '''
+    This class is repsonsible for issueing commands to the motor controller board. Besides motor voltage setting other 
+    functions of the board are implemented here like led toggling, adc readout etc
+    '''
     def __init__(self,serial_port):
         self.s=serial_port
         self.fwconfig = parse_firmware_config()
+        
+    def parse_parameters(self,s):
+        return s.split('(')[1].split(')')[0].split(',')
         
     def set_motor_voltage(self, channel,direction,voltage):
         '''
@@ -79,41 +49,99 @@ class MotorControl(object):
         command = 'set_pwm({0},{1},{2})'.format(self.fwconfig[channel + '_MOTOR'], forward_pw, backward_pw)        
         self.s.flushInput()
         self.s.write(command)
-        time.sleep(0.3)
-        response = self.s.read(25)
-        print response
-        #TODO: check response
+        time.sleep(0.1)
+        response = self.s.read(len(command)*2)
+        resp_par = self.parse_parameters(response)
+        cmd_par = self.parse_parameters(command)
+        return resp_par[0] == cmd_par[0] and resp_par[-2:] == cmd_par[-2:]
         
     def stop(self):
         for channel in ['LEFT','RIGHT']:
             command = 'set_pwm({0},0,0)'.format(self.fwconfig[channel + '_MOTOR'])        
             self.s.flushInput()
             self.s.write(command)
-            response = self.s.read(25)
-            print response
+            response = self.s.read(len(command)+4)
+            time.sleep(0.1)
+            return response == command.replace('0)','0,0,0)')
         
     def set_motor_speed(self,channel,speed):
         '''
         '''
-        
 
+    def set_led(self, color,state):
+        col_str = color.upper() + '_LED'
+        if not self.fwconfig.has_key(col_str):
+            raise RuntimeError('Invalid led color: {0}', format(color))
+        command = 'set_led({0},{1})'.format(self.fwconfig[col_str],int(state))
+        self.s.flushInput()
+        self.s.write(command)
+        response = self.s.read(len(command))
+        return response == command
         
-def test():
-    time.sleep(3.0)
-    print 'Firmware test started'
-    fwconfig = parse_firmware_config()
-    s = serial.Serial('/dev/ttyUSB0', timeout=0.5, baudrate=fwconfig['BAUD'])
-    #Test motor
-    mc=MotorControl(s)
-    s.write('echo(1)')
-    for v in numpy.arange(0,1,0.1):
-        mc.set_motor_voltage('LEFT', 'BACKWARD', v)
-        time.sleep(1)
-    mc.stop()
-    #Test something else
-    
-    s.close()
-    print 'Firmware test finished'
+    def echo(self, value):
+        command = 'echo({0})'.format(value)
+        self.s.flushInput()
+        self.s.write(command)
+        response = self.s.read(len(command))
+        return response == command
+        
+    def read_adc(self):
+        command = 'read_adc()'
+        self.s.flushInput()
+        self.s.write(command)
+        response = self.s.read(len(command)+2*6)
+        print response
+        
+    def read_rpm(self):
+        pass
+
+class FirmwareTester(unittest.TestCase):
+    def setUp(self):
+        self.serial_port_timeout = 0.5
+        fwconfig = parse_firmware_config()
+        self.s=serial.Serial('/dev/ttyUSB0', timeout=self.serial_port_timeout, baudrate=fwconfig['BAUD'])
+        self.mc=mc=MotorControl(self.s)
+        time.sleep(3.0)#Wait till microcontroller starts up and ready to receive commands
+
+    def tearDown(self):
+        #turn off leds
+        map(self.mc.set_led, ['green', 'red'],[0,0])
+        #Make sure that all motors are stopped
+        if not self.mc.stop():
+            raise RuntimeError('Motors did not stop')
+        self.s.close()
+        
+    def test_01_echo(self):
+        self.assertTrue(self.mc.echo(int(random.random()*255)))
+        
+    def test_02_measure_response_time(self):
+        t0=time.time()
+        res = self.mc.echo(int(random.random()*255))
+        dt = time.time()-t0
+        self.echo_response_time=dt
+        print dt
+        self.assertLess(dt, self.serial_port_timeout +0.1)
+        self.assertTrue(res)
+        
+    def test_03_set_led(self):
+        res = []
+        for i in range(2):
+            res.append(self.mc.set_led('red',i%2))
+            res.append(self.mc.set_led('green',not bool(i%2)))
+        map(self.assertTrue,res)
+        
+    def test_04_set_motor_voltage(self):
+        res = []
+        for v in numpy.arange(0,1,0.3):
+            res.append(self.mc.set_motor_voltage('LEFT', 'BACKWARD', v))
+            res.append(self.mc.set_motor_voltage('LEFT', 'FORWARD', v))
+        map(self.assertTrue,res)
+        
+    def test_05_read_adc(self):
+        self.mc.read_adc()
+        
+    def test_06_read_rpm(self):
+        pass
 
 if __name__ == "__main__":
-    test()
+    unittest.main()

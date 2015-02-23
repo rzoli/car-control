@@ -86,6 +86,25 @@ void DeviceCommands::set_pwm(uint8_t channel, uint16_t pulsewidth_forward, uint1
     }
     *this<<"set_pwm("<<channel <<","<<forward_register<<","<<reverse_register<<","<<pulsewidth_forward<<","<<pulsewidth_backward<<")";
 }
+void DeviceCommands::set_led(uint8_t color, uint8_t state)
+{
+    if (state == 0)
+    {
+        PORTA.OUTSET = 1<<color;
+    }
+    else if (state == 1)
+    {
+        PORTA.OUTCLR = 1<<color;
+    }
+    *this<<"set_led("<<color<<","<<state<<")";
+}
+
+void DeviceCommands::read_adc(void)
+{
+    uint16_t val1=1000;
+    int16_t val2=-2000;
+    *this<<"read_adc("<<val1<<","<<val2<<")";
+}
 
 uint8_t DeviceCommands::next_command(void)
 {
@@ -98,6 +117,10 @@ uint8_t DeviceCommands::next_command(void)
                 echo(command.parameters[0]);
             else if (strcmp(command.name, "set_pwm") == 0)
                 set_pwm((uint8_t)command.parameters[0], command.parameters[1], command.parameters[2]);
+            else if (strcmp(command.name, "set_led") == 0)
+                set_led((uint8_t)command.parameters[0], (uint8_t)command.parameters[1]);
+            else if (strcmp(command.name, "read_adc") == 0)
+                read_adc();
             
             
   //          comm << cp.command.name<<"\t"<<cp.command.nparameters<<"\n";
