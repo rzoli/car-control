@@ -1,8 +1,8 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE Project SYSTEM "Project-4.6.dtd">
 <!-- eric4 project file for project robot-control -->
-<!-- Saved: 2014-11-13, 14:19:24 -->
-<!-- Copyright (C) 2014 ,  -->
+<!-- Saved: 2015-05-15, 15:41:37 -->
+<!-- Copyright (C) 2015 ,  -->
 <Project version="4.6">
   <Language>en</Language>
   <ProgLanguage mixed="0">Python</ProgLanguage>
@@ -32,6 +32,7 @@
     <Source>motor_drive/comm.h</Source>
     <Source>motor_drive/comm.cpp</Source>
     <Source>motor_drive/main.cpp</Source>
+    <Source>motor_drive/gearbox_rpm_video.py</Source>
   </Sources>
   <Forms>
   </Forms>
