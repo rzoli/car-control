@@ -113,15 +113,16 @@ void init_mcu(void)
     
     //Input capture/rpm measurement
     //other channel might be TCE1
-    TCC1.PER = RPM_MEASUREMENT_COUNTER_RELOAD_VALUE;
-	TCC1.CTRLA |= TC_CLKSEL_DIV1_gc; 
-    TCC1.CTRLB |= 0x10; /* select capture channel A */
-    TCC1.CTRLD |= TC_EVACT_CAPT_gc | TC_EVSEL_CH0_gc; /* select capture event and event channel 0 */
-	EVSYS.CH0MUX = EVSYS_CHMUX_PORTE_PIN0_gc; /* portE pin 0 */
-	PORTE.DIRCLR = 0x1; /* PE0 is input */
-	PORTE.PIN0CTRL = PORT_ISC_RISING_gc; /* sense rising edges */
-	TCC1.INTCTRLA = 1;
-	TCC1.INTCTRLB = 1;//later: medium priorityTEST
+    
+//    TCC1.PER = RPM_MEASUREMENT_COUNTER_RELOAD_VALUE;
+//	TCC1.CTRLA |= TC_CLKSEL_DIV1_gc; 
+//    TCC1.CTRLB |= 0x10; /* select capture channel A */
+//    TCC1.CTRLD |= TC_EVACT_CAPT_gc | TC_EVSEL_CH0_gc; /* select capture event and event channel 0 */
+//	EVSYS.CH0MUX = EVSYS_CHMUX_PORTE_PIN0_gc; /* portE pin 0 */
+	//PORTE.DIRCLR = 0x1; /* PE0 is input */
+	//PORTE.PIN0CTRL = PORT_ISC_RISING_gc; /* sense rising edges */
+//	TCC1.INTCTRLA = 1;
+//	TCC1.INTCTRLB = 1;//later: medium priorityTEST
     
     /* Enable PMIC interrupt level low. */
 	PMIC.CTRL |= PMIC_LOLVLEX_bm;
