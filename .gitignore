@@ -2,3 +2,5 @@
 *.hex
 *.pyc
 *.bak
+*.e4q
+*.e4t
