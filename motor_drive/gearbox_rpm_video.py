@@ -4,14 +4,14 @@ import subprocess
 import os
 from PIL import Image,ImageDraw
 from pylab import *
-from skimage.filters import threshold_otsu
+from skimage.filter import threshold_otsu
 import shutil
 
 folder='/tmp/3'
 if os.path.exists(folder):
     shutil.rmtree(folder)
 os.mkdir(folder)
-fn='~/motor_volt_0.5_1.webm'
+fn='/tmp/motor_volt_1.0_1.webm'
 cmd='avconv -i {0} {1}/out%06d.jpeg'.format(fn, folder)
 subprocess.call(cmd,shell=True)
 files = os.listdir(folder)
@@ -25,17 +25,16 @@ dr.ellipse((center[0]-radius2, center[1]-radius2,center[0]+radius2, center[1]+ra
 dr.ellipse((center[0]-radius1, center[1]-radius1,center[0]+radius1, center[1]+radius1), fill=0)
 mask = numpy.asarray(mask)
 meanimage = numpy.zeros_like(numpy.asarray(Image.open(os.path.join(folder, files[0])).convert('L')), dtype=numpy.float)
-print 'bacground calculation'
-for f in files:
-    im=numpy.asarray(Image.open(os.path.join(folder, f)).convert('L'))
-    meanimage += im*mask
-#    immasked = numpy.ma.masked_array(im, mask)
-#    t=threshold_otsu(immasked)
-#    numpy.where(immasked<t, 0, 1)
-#    Image.fromarray(t).save('/tmp/4/'+f)
-    pass
-meanimage/=len(files)
-bg=meanimage[numpy.where(mask>0)].mean()
+if 1:
+    print 'background calculation'
+    for f in files:
+        im=numpy.asarray(Image.open(os.path.join(folder, f)).convert('L'))
+        meanimage += im
+    meanimage/=len(files)
+    bg=meanimage[numpy.where(mask>0)].mean()
+    print bg
+else:
+    bg=0
 cogs = []
 print 'collecting center of gravity'
 for f in files:
@@ -56,4 +55,5 @@ for f in files:
     o[shape]=255
     Image.fromarray(o).save('/tmp/4/'+f)
 cogs=numpy.array(cogs)
+numpy.save('/tmp/1.0MV.npy', cogs)
 plot(numpy.sqrt((numpy.diff(cogs, axis=0)**2).sum(axis=1)));show()#movement vector - corresponds to speed
