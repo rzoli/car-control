@@ -62,12 +62,12 @@ class RemoteControl(gui.VisexpmanMainWindow):
                 self.printc('Already open')
                 return
             import serial
-            self.s=serial.Serial(self.setting_values['Serial port'], timeout=self.serial_port_timeout, baudrate=parse_firmware_config()['BAUD'])
+            self.s=serial.Serial(self.setting_values['Serial port'], timeout=0.5, baudrate=parse_firmware_config()['BAUD'])
             self.mc=mc=MotorControl(self.s)
         
     def echo_action(self):
         if hasattr(self, 'mc'):
-            self.printc(self.mc.echo(1))
+            self.log(self.mc.echo(1))
         
     def set_pwm_action(self):
         raise RuntimeError('a')
