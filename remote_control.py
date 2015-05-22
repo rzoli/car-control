@@ -1,12 +1,25 @@
+import Queue
 import os
 import time
 import tempfile
 import logging
+import sys
+import traceback
 import PyQt4.Qt as Qt
 import PyQt4.QtGui as QtGui
 import PyQt4.QtCore as QtCore
 from visexpman.engine.generic import gui, fileop
 from motor_drive.firmware_test import MotorControl,parse_firmware_config
+
+def excepthook(excType, excValue, tracebackobj):
+    msg='\n'.join(traceback.format_tb(tracebackobj))+str(excType.__name__)+': '+str(excValue)
+    print msg
+    error_messages.put(msg)
+    
+sys.excepthook = excepthook
+
+
+error_messages = Queue.Queue()
 
 class RemoteControl(gui.VisexpmanMainWindow):
     def __init__(self):
@@ -33,8 +46,15 @@ class RemoteControl(gui.VisexpmanMainWindow):
         self._add_dockable_widget('Settings', QtCore.Qt.RightDockWidgetArea, QtCore.Qt.RightDockWidgetArea, self.settings)
         self.show()
         self.log('Started')
+        self.error_timer = QtCore.QTimer()
+        self.error_timer.timeout.connect(self.catch_error_message)
+        self.error_timer.start(100)
         if QtCore.QCoreApplication.instance() is not None:
             QtCore.QCoreApplication.instance().exec_()
+            
+    def catch_error_message(self):
+        if not error_messages.empty():
+            self.log(error_messages.get(),'error')
             
     def _get_params_config(self):
         pc =  [ 
@@ -42,9 +62,6 @@ class RemoteControl(gui.VisexpmanMainWindow):
                 {'name': 'Microcontroller level', 'type': 'group', 'expanded' : True, 'children': [
                     {'name': 'Serial port', 'type': 'str', 'value': '/dev/ttyUSB0'},
                     {'name': 'Connection', 'type': 'list', 'values': ['serial port', 'tcp/ip'], 'value': 'serial port'},
-#                    {'name': 'Exposure time', 'type': 'float', 'value': 100.0, 'siPrefix': True, 'suffix': 'ms'},
-#                    {'name': 'Gain', 'type': 'float', 'value': 1.0, },
-                    
                     ]},
                     
                     ]
@@ -70,7 +87,6 @@ class RemoteControl(gui.VisexpmanMainWindow):
             self.log(self.mc.echo(1))
         
     def set_pwm_action(self):
-        raise RuntimeError('a')
         if hasattr(self, 'mc'):
             self.printc(self.mc)
             
@@ -82,16 +98,6 @@ class RemoteControl(gui.VisexpmanMainWindow):
         getattr(logging, loglevel)(str(msg))
         self.logw.update(fileop.read_text_file(self.logfile))
         
-        
-import sys
-import traceback
-
-def excepthook(excType, excValue, tracebackobj):
-    msg='\n'.join(traceback.format_tb(tracebackobj))+str(excType.__name__)+': '+str(excValue)
-    print msg
-    logging.error(msg)
-    
-sys.excepthook = excepthook
-            
+                    
 if __name__ == '__main__':
     RemoteControl()
