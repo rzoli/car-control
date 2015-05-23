@@ -49,6 +49,9 @@ class RemoteControl(gui.VisexpmanMainWindow):
         self.error_timer = QtCore.QTimer()
         self.error_timer.timeout.connect(self.catch_error_message)
         self.error_timer.start(100)
+        self.log_update_timer = QtCore.QTimer()#Makes sure that whole logfile is always displayed on screen
+        self.log_update_timer.timeout.connect(self.logfile2screen)
+        self.log_update_timer.start(700)
         if QtCore.QCoreApplication.instance() is not None:
             QtCore.QCoreApplication.instance().exec_()
             
@@ -56,12 +59,16 @@ class RemoteControl(gui.VisexpmanMainWindow):
         if not error_messages.empty():
             self.log(error_messages.get(),'error')
             
+    def logfile2screen(self):
+        self.logw.update(fileop.read_text_file(self.logfile))
+            
     def _get_params_config(self):
         pc =  [ 
                 
                 {'name': 'Microcontroller level', 'type': 'group', 'expanded' : True, 'children': [
                     {'name': 'Serial port', 'type': 'str', 'value': '/dev/ttyUSB0'},
                     {'name': 'Connection', 'type': 'list', 'values': ['serial port', 'tcp/ip'], 'value': 'serial port'},
+                    {'name': 'Timeout', 'type': 'float', 'value': 0.5, 'suffix': 's'},
                     ]},
                     
                     ]
@@ -71,7 +78,13 @@ class RemoteControl(gui.VisexpmanMainWindow):
         return pc
         
     def settings_changed(self):
+        import copy
+        prev_values = copy.deepcopy(self.setting_values)
         self.setting_values = self.settings.get_parameter_tree(True)
+        if hasattr(self, 'mc'):
+            for k in prev_values.keys():
+                if 'LED' in k and prev_values[k]!=self.settings[k]:
+                    self.mc.set_led(k.replace('_LED',''),self.setting_values[k])
         
     def connect_action(self):
         if self.setting_values['Connection'] == 'serial port':
@@ -79,7 +92,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
                 self.printc('Already open')
                 return
             import serial
-            self.s=serial.Serial(self.setting_values['Serial port'], timeout=0.5, baudrate=parse_firmware_config()['BAUD'])
+            self.s=serial.Serial(self.setting_values['Serial port'], timeout=self.setting_values['Timeout'], baudrate=parse_firmware_config()['BAUD'])
             self.mc=mc=MotorControl(self.s)
         
     def echo_action(self):
