@@ -62,6 +62,16 @@ class MotorControl(object):
         cmd_par = self.parse_parameters(command)
         return resp_par[0] == cmd_par[0] and resp_par[-2:] == cmd_par[-2:]
         
+    def set_pwm(self,channel,forward,backward):
+        command = 'set_pwm({0},{1},{2})'.format(self.fwconfig[channel + '_MOTOR'], int(forward), int(backward))
+        self.send_command(command)
+        time.sleep(0.1)
+        response = self.s.read(len(command)*2)
+        logging.info('response: {0}'.format(response))
+        resp_par = self.parse_parameters(response)
+        cmd_par = self.parse_parameters(command)
+        return resp_par[0] == cmd_par[0] and resp_par[-2:] == cmd_par[-2:]
+        
     def stop(self):
         for channel in ['LEFT','RIGHT']:
             command = 'set_pwm({0},0,0)'.format(self.fwconfig[channel + '_MOTOR'])        

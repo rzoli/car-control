@@ -66,21 +66,42 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     
                     ]
         pc[0]['children'].extend([{'name': '{0}'.format(l), 'type': 'bool', 'value': False} for l in [k for k in parse_firmware_config().keys() if 'LED' in k]])
-        pwm_channels = ['PWM {0}'.format(pwmc) for pwmc in ['PORTE01', 'PORTE34', 'PORTD01', 'PORTD34']]
+        pwm_channels = ['PWM {0}'.format(pwmc) for pwmc in ['PORTE01', 'PORTE23', 'PORTD01', 'PORTD23']]
         pc[0]['children'].extend([{'name': p, 'type': 'float', 'value': 0.0, 'suffix': '%'} for p in pwm_channels])
         return pc
         
     def settings_changed(self):
-        self.setting_values = self.settings.get_parameter_tree(True)
+        new_values=self.settings.get_parameter_tree(True)
+        if hasattr(self, 'setting_values'):
+            #Check if LED status was changed
+            for pn in [k for k in parse_firmware_config().keys() if 'LED' in k]:
+                state=new_values[pn]
+                if self.setting_values[pn]!=state and hasattr(self,'mc'):
+                    self.mc.set_led(pn[:-4],state)
+            #Check if PWM status was changed
+            for pn in [k for k in self.setting_values.keys() if 'PWM' in k]:
+                voltage=new_values[pn]
+                if self.setting_values[pn]!=voltage and hasattr(self,'mc'):
+                    voltage*=10
+                    if '01' in pn:
+                        forward = voltage
+                        backward = 0
+                    else:
+                        forward = 0
+                        backward = voltage
+                    self.mc.set_pwm('LEFT' if 'PORTE' in pn else 'RIGHT',forward,backward)
+        self.setting_values = new_values
+        
         
     def connect_action(self):
         if self.setting_values['Connection'] == 'serial port':
             if hasattr(self,'mc'):
-                self.printc('Already open')
+                self.log('Already open')
                 return
             import serial
             self.s=serial.Serial(self.setting_values['Serial port'], timeout=0.5, baudrate=parse_firmware_config()['BAUD'])
-            self.mc=mc=MotorControl(self.s)
+            self.mc=MotorControl(self.s)
+            self.log('Connected')
         
     def echo_action(self):
         if hasattr(self, 'mc'):
