@@ -45,25 +45,8 @@ class MotorControl(object):
         self.s.write(command)
         logging.info('command send: {0}'.format(command))
         
-    def set_motor_voltage(self, channel,direction,voltage):
-        '''
-        channel: LEFT, RIGHT
-        direction: FORWARD,BACKWARD
-        voltage: PU 0...1.0
-        '''
-        forward_pw = int((voltage if direction == 'FORWARD' else 0)*1000)
-        backward_pw = int((voltage if direction == 'BACKWARD' else 0)*1000)
-        command = 'set_pwm({0},{1},{2})'.format(self.fwconfig[channel + '_MOTOR'], forward_pw, backward_pw)        
-        self.send_command(command)
-        time.sleep(0.1)
-        response = self.s.read(len(command)*2)
-        logging.info('response: {0}'.format(response))
-        resp_par = self.parse_parameters(response)
-        cmd_par = self.parse_parameters(command)
-        return resp_par[0] == cmd_par[0] and resp_par[-2:] == cmd_par[-2:]
-        
-    def set_pwm(self,channel,forward,backward):
-        command = 'set_pwm({0},{1},{2})'.format(self.fwconfig[channel + '_MOTOR'], int(forward), int(backward))
+    def set_pwm(self,channel,pulse_width):
+        command = 'set_pwm({0},{1},{2})'.format(channel, int(pulse_width))
         self.send_command(command)
         time.sleep(0.1)
         response = self.s.read(len(command)*2)

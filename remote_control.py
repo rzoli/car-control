@@ -114,7 +114,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     
                     ]
         pc[0]['children'].extend([{'name': '{0}'.format(l), 'type': 'bool', 'value': False} for l in [k for k in parse_firmware_config().keys() if 'LED' in k]])
-        pwm_channels = ['PWM {0}'.format(pwmc) for pwmc in ['PORTE01', 'PORTE23', 'PORTD01', 'PORTD23']]
+        pwm_channels = ['PWM {0}'.format(pwmc) for pwmc in ['PORTE0', 'PORTE1', 'PORTE2', 'PORTE3']]
         pc[0]['children'].extend([{'name': p, 'type': 'float', 'value': 0.0, 'suffix': '%'} for p in pwm_channels])
         return pc
         
@@ -130,14 +130,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
             for pn in [k for k in self.setting_values.keys() if 'PWM' in k]:
                 voltage=new_values[pn]
                 if self.setting_values[pn]!=voltage and hasattr(self,'mc'):
-                    voltage*=10
-                    if '01' in pn:
-                        forward = voltage
-                        backward = 0
-                    else:
-                        forward = 0
-                        backward = voltage
-                    self.mc.set_pwm('LEFT' if 'PORTE' in pn else 'RIGHT',forward,backward)
+                    self.mc.set_pwm(int(pn[-1]),int(voltage*10))
         self.setting_values = new_values
         
     def connect_action(self):
