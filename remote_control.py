@@ -70,7 +70,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
         self.vs.start()
         self.image_timer = QtCore.QTimer()
         self.image_timer.timeout.connect(self.get_image)
-        self.image_timer.start(500)
+        self.image_timer.start(100)
         
         
         if QtCore.QCoreApplication.instance() is not None:
@@ -104,7 +104,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
 #        print ssh_stderr.read()
             
     def _get_params_config(self):
-        pc =  [ 
+        pc =  [
                 
                 {'name': 'Microcontroller level', 'type': 'group', 'expanded' : True, 'children': [
                     {'name': 'Serial port', 'type': 'str', 'value': '/dev/ttyUSB0'},
@@ -192,6 +192,45 @@ class VideoStreamer(multiprocessing.Process):
                 pass
             time.sleep(1e-3)
     
+    def run1(self):
+        import io
+        import socket
+        import struct
+        from PIL import Image
+        self.aborted=False
+
+        # Start a socket listening for connections on 0.0.0.0:8000 (0.0.0.0 means
+        # all interfaces)
+        server_socket = socket.socket()
+        server_socket.bind(('0.0.0.0', 8000))
+        while True:
+            server_socket.listen(0)
+
+        
+            # Accept a single connection and make a file-like object out of it
+            self.connection = server_socket.accept()[0].makefile('rb')
+            print 'connected'
+            try:
+                while True:
+                    if not self.command.empty():  
+                        print self.command.get()
+                        self.aborted=True
+                        break
+                    try:
+                        image_len = struct.unpack('<L', self.connection.read(4))[0]
+                        if not image_len:
+                            break
+                    
+                        self.image.put(numpy.asarray(Image.open(io.BytesIO(self.connection.read(image_len)))))
+                        print 'image read'
+                    except:
+                        pass
+                    time.sleep(1e-3)
+            finally:
+                print 'closing'
+                self.connection.close()
+                server_socket.close()
+            if self.aborted: break
                     
 if __name__ == '__main__':
     RemoteControl()
