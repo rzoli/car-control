@@ -16,7 +16,7 @@ ISR(TIMER1_COMPA_vect) {
    portd_val|=PORT_PIN(PIND,7,6);
    portd_val|=PORT_PIN(PINC,6,5);
    portd_val|=PORT_PIN(PINE,6,7);
-   Serial.write((byte)((isr_counter>>8)&0x00000FF));   
+//   Serial.write((byte)((isr_counter)&0x00000FF));   
 //   Serial.write((byte)isr_counter&0x000000FF);
    Serial.write(portd_val);
 }
@@ -37,7 +37,7 @@ void setup() {
   DDRE&=~(1<<6);
   //Timer 1 is sampling portd
   TCCR1B|=1;//No prescaling, 1 tick corresponds to 1/16 us
-  OCR1A = 800-1;//320-1;//50 kHz, 160-1; //100 kHz, 16 bit counter, 768: 30 kHz, 80 kHz: 200
+  OCR1A = 500-1;
   TIMSK1|= 1<<1;
   isr_counter=0;
   sei();

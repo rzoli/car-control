@@ -1,6 +1,7 @@
 #TODO: very slow above 100 ms timebases
-#TODO: Pause button
 #TODO: fix timing
+#TODO: measure timer isr runtime
+#TODO: measure timer isr frq
 import numpy,time
 import serial
 import PyQt4.Qt as Qt
@@ -16,14 +17,17 @@ class CWidget(QtGui.QWidget):
     '''
     def __init__(self,parent):
         QtGui.QWidget.__init__(self,parent)
+        self.start_stop=QtGui.QPushButton('Start' ,parent=self)
         self.plotw=gui.Plot(self)#Plot widget initialization
         self.plotw.setFixedHeight(250)
         self.plotw.plot.setLabels(left='pin number-1', bottom='time [ms]')#Adding labels to the plot
         self.channelselect=[gui.LabeledCheckBox(self,'{0}'.format(i)) for i in range(8)]
         self.l = QtGui.QGridLayout()#Organize the above created widgets into a layout
         self.l.addWidget(self.plotw, 0, 0, 1, 5)
+        self.l.addWidget(self.start_stop, 1, 0, 1, 1)
         for i in range(len(self.channelselect)):
-            self.l.addWidget(self.channelselect[i], 1+i/4, i%4, 1, 1)
+            self.l.addWidget(self.channelselect[i], 2+i/4, i%4, 1, 1)
+        
         self.setLayout(self.l)
 
 
@@ -42,52 +46,44 @@ class OScope(gui.SimpleAppWindow):
         self.setMinimumWidth(1200)#Setting the minimum size of the main user interface
         self.setMinimumHeight(750)
         
-        self.fsample=10e3
+        self.fsample=16e3
         self.timebase=10e-3#s
         self.ts=1.0/self.fsample
         self.s=serial.Serial('/dev/ttyACM0',baudrate=921600,timeout=1)
         
-        self.timer = QtCore.QTimer()#Timer for periodically checking mouse cursor position
-        self.timer.timeout.connect(self.read_samples)#Assign it to cursor_handler function
-        self.timer.start(int(1000.*self.timebase))#Start timer with the right period time
-        try:
-            self.d=serial.Serial('/dev/ttyUSB0',timeout=1)
-        except:
-            pass
-            
-        self.timer1 = QtCore.QTimer()#Timer for periodically checking mouse cursor position
-        self.timer.timeout.connect(self.toggle)#Assign it to cursor_handler function
-        self.timer.start(100)#Start timer with the right period time
-        self.state=1
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.read_samples)
+        self.timer.start(int(1000.*self.timebase))
+        self.connect(self.cw.start_stop, QtCore.SIGNAL('clicked()'), self.start_stop)
+        self.run=False
         
-    def toggle(self):
-        if self.state:
-            self.state=0
-        else:
-            self.state=1
-        self.do(self.state)
-            
+    def start_stop(self):
+        self.run = False if self.run else True
+        self.cw.start_stop.setText('Start' if not self.run else 'Stop')
         
     def read_samples(self):
+        if not self.run:
+            return
         self.timer.setInterval(int(1000.*self.timebase))
         if not self.s.isOpen():
             return
         self.s.setTimeout(2*self.timebase)
         self.nsamples=int(self.timebase/self.ts)
-        r=self.s.read(2*self.nsamples)
+        r=self.s.read(self.nsamples)
         self.data=numpy.fromstring(r,dtype=numpy.uint8)
-        self.data = self.data.reshape(self.nsamples,2)
-        self.data=self.data[::-1]
+        #self.data = self.data.reshape(self.nsamples,2)
+        
         self.t=numpy.linspace(0,self.timebase,self.nsamples)*1e3
-#        if numpy.diff(self.data[:,0]).min()!=1 or :
+        
+#        if numpy.diff(self.data[:,0]).min()!=1 and numpy.diff(self.data[:,0]).max()!=254 and 0:
 #            self.log('some samples may be missing','warning')
 #            return
-        self.cw.plotw.plot.setTitle(format(self.data[-1,1], '#010b'))
+        self.cw.plotw.plot.setTitle(format(self.data[-1], '#010b'))
         enabled_channels = [w.input.checkState()==2 for w in self.cw.channelselect]
         if sum(enabled_channels)==0:
             return
         x=sum(enabled_channels)*[self.t]
-        y=[numpy.where(numpy.bitwise_and(self.data[:,1],numpy.array(self.nsamples*[1<<b],dtype=numpy.uint8))==0,0,b+1) for b in range(8) if enabled_channels[b]]
+        y=[numpy.where(numpy.bitwise_and(self.data,numpy.array(self.nsamples*[1<<b],dtype=numpy.uint8))==0,0,b+1) for b in range(8) if enabled_channels[b]]
         refcolors=[(255,0,0),(0,255,0),(0,0,255),(0,0,0),(0,255/2,255/2),(255,0,255),(255/2,255/2,0),(127,127,255)]
         c=[refcolors[ci] for ci in range(8) if enabled_channels[ci]]
         self.cw.plotw.update_curves(x,y,colors=c)
@@ -95,13 +91,7 @@ class OScope(gui.SimpleAppWindow):
         
     def closeEvent(self, e):
         self.s.close()
-        if hasattr(self,'d'):
-            self.d.close()
         e.accept()
-
-    def do(self,state):
-        if hasattr(self,'d'):
-            self.d.setRTS(not state)
 
 if __name__ == '__main__':
     gui = OScope()
