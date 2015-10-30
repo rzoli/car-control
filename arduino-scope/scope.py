@@ -1,7 +1,7 @@
 #TODO: very slow above 100 ms timebases
-#TODO: fix timing
-#TODO: measure timer isr runtime
-#TODO: measure timer isr frq
+#TODO: eliminate periodic signal runs on screen
+#measure timer isr runtime->15 us
+#measure timer isr frq->25 kHz, considering 14.7456 MHz clock speed
 import numpy,time
 import serial
 import PyQt4.Qt as Qt
@@ -46,10 +46,10 @@ class OScope(gui.SimpleAppWindow):
         self.setMinimumWidth(1200)#Setting the minimum size of the main user interface
         self.setMinimumHeight(750)
         
-        self.fsample=16e3
+        self.fsample=25e3
         self.timebase=10e-3#s
         self.ts=1.0/self.fsample
-        self.s=serial.Serial('/dev/ttyACM0',baudrate=921600,timeout=1)
+        self.s=serial.Serial('/dev/ttyACM1',baudrate=921600,timeout=1)
         
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.read_samples)
