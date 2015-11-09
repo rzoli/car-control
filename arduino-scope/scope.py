@@ -22,9 +22,11 @@ class CWidget(QtGui.QWidget):
         self.plotw.setFixedHeight(250)
         self.plotw.plot.setLabels(left='pin number-1', bottom='time [ms]')#Adding labels to the plot
         self.channelselect=[gui.LabeledCheckBox(self,'{0}'.format(i)) for i in range(8)]
+        self.analog_selected=gui.LabeledCheckBox(self,'Analog')
         self.l = QtGui.QGridLayout()#Organize the above created widgets into a layout
         self.l.addWidget(self.plotw, 0, 0, 1, 5)
         self.l.addWidget(self.start_stop, 1, 0, 1, 1)
+        self.l.addWidget(self.analog_selected, 1, 1, 1, 1)
         for i in range(len(self.channelselect)):
             self.l.addWidget(self.channelselect[i], 2+i/4, i%4, 1, 1)
         
@@ -49,7 +51,10 @@ class OScope(gui.SimpleAppWindow):
         self.fsample=25e3
         self.timebase=10e-3#s
         self.ts=1.0/self.fsample
-        self.s=serial.Serial('/dev/ttyACM1',baudrate=921600,timeout=1)
+        try:
+            self.s=serial.Serial('/dev/ttyACM1',baudrate=921600,timeout=1)
+        except serial.SerialException:
+            self.s=serial.Serial('/dev/ttyACM0',baudrate=921600,timeout=1)
         
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.read_samples)
@@ -79,15 +84,21 @@ class OScope(gui.SimpleAppWindow):
 #            self.log('some samples may be missing','warning')
 #            return
         self.cw.plotw.plot.setTitle(format(self.data[-1], '#010b'))
-        enabled_channels = [w.input.checkState()==2 for w in self.cw.channelselect]
-        if sum(enabled_channels)==0:
-            return
-        x=sum(enabled_channels)*[self.t]
-        y=[numpy.where(numpy.bitwise_and(self.data,numpy.array(self.nsamples*[1<<b],dtype=numpy.uint8))==0,0,b+1) for b in range(8) if enabled_channels[b]]
-        refcolors=[(255,0,0),(0,255,0),(0,0,255),(0,0,0),(0,255/2,255/2),(255,0,255),(255/2,255/2,0),(127,127,255)]
-        c=[refcolors[ci] for ci in range(8) if enabled_channels[ci]]
-        self.cw.plotw.update_curves(x,y,colors=c)
-        self.cw.plotw.plot.setYRange(0, 8)
+        if self.cw.analog_selected.input.checkState()==2:
+            y=self.data*(5.0/256)
+            x=self.t
+            self.cw.plotw.update_curve(x,y)
+            self.cw.plotw.plot.setYRange(0, 5.0)
+        else:
+            enabled_channels = [w.input.checkState()==2 for w in self.cw.channelselect]
+            if sum(enabled_channels)==0:
+                return
+            x=sum(enabled_channels)*[self.t]
+            y=[numpy.where(numpy.bitwise_and(self.data,numpy.array(self.nsamples*[1<<b],dtype=numpy.uint8))==0,0,b+1) for b in range(8) if enabled_channels[b]]
+            refcolors=[(255,0,0),(0,255,0),(0,0,255),(0,0,0),(0,255/2,255/2),(255,0,255),(255/2,255/2,0),(127,127,255)]
+            c=[refcolors[ci] for ci in range(8) if enabled_channels[ci]]
+            self.cw.plotw.update_curves(x,y,colors=c)
+            self.cw.plotw.plot.setYRange(0, 8)
         
     def closeEvent(self, e):
         self.s.close()
