@@ -102,7 +102,7 @@ void setup() {
   //pin 10 isr
   DDRB|=1<<2;
   //read port 9
-  DDRB&=~(1<<2);
+  DDRB&=~(1<<1);
   Serial.begin(921600);
   Serial.setTimeout(10);
   //Sampling digital inputs:
@@ -116,7 +116,7 @@ void setup() {
   init_adc();
 /*  run_mode=DIGITAL_INPUTS;//IDLE;
   switchmode(run_mode);*/
-  if (((PINB>>2)&0x01)==0)
+  if (((PINB>>1)&0x01)==0)
   {
     PORTB&=~(1<<1);
   }

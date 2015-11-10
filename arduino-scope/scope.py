@@ -52,9 +52,9 @@ class OScope(gui.SimpleAppWindow):
         self.timebase=10e-3#s
         self.ts=1.0/self.fsample
         try:
-            self.s=serial.Serial('/dev/ttyACM1',baudrate=921600,timeout=1)
-        except serial.SerialException:
             self.s=serial.Serial('/dev/ttyACM0',baudrate=921600,timeout=1)
+        except serial.SerialException:
+            self.s=serial.Serial('/dev/ttyACM1',baudrate=921600,timeout=1)
         
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.read_samples)
