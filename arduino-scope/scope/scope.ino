@@ -2,8 +2,8 @@
 /*
  * TODOS
  * 
- * 1) Control pin 8-11 using first 4 bits of a serial command byte
- * 2) Read analog input. channel selection by using serial port command byte's last four bits. Digital inputs are enabled by selecting channel 0
+ * 1) Reintegrate adc
+ * 2) Solve switch between adc and digital inp
  * 
  */
 byte digial_val;
@@ -15,9 +15,14 @@ byte run_mode;
 #define ANALOG_INPUTS 2
 #define COMPARE 75//25 kHz, FCPU is 14.7456MHz, comp=FCPU/(f*prescale)+1
 #define PRESCALE 2 //8 prescale
-#define COMPARE_ADC 134//15 kHz
+#define COMPARE_ADC 200//12.5 kHz
 
-#define PORT_PIN(port,pin,pos) ((port&(1<<pin))>>pin)<<pos
+#define ENABLE_ADC TIMSK0 |= 1<<1
+#define DISABLE_ADC TIMSK0 &= ~(1<<1)
+
+#define ENABLE_DI TIMSK1 |= 1<<1
+#define DISABLE_DI TIMSK1 &= ~(1<<1)
+
 
 #define ADC5  5
 #define ADC4  4
@@ -27,122 +32,85 @@ byte run_mode;
 #define ADC0  0
 
 ISR(ADC_vect ){
+  PORTB |=(1<<0);
   analog_val = ADCH;
- Serial.write(analog_val);  
+  Serial.write(analog_val);
+  PORTB &=~(1<<0);
 }
 
-ISR(TIMER0_COMPB_vect) {
-   TCNT0=0;
+ISR(TIMER0_COMPA_vect) {
+  PORTB |=(1<<2);
+  TCNT0=0;
+  PORTB &=~(1<<2);
 }
 
 ISR(TIMER1_COMPA_vect) {
    PORTB |=(1<<2);
    TCNT1L=0;
    TCNT1H=0;
-   Serial.write(PIND);
+   Serial.write(PIND&0xfc);
    PORTB &=~(1<<2);
 }
 
-void init_adc(void)
+void switchmode()
 {
-   TCCR0B=PRESCALE;
-   OCR1B = COMPARE_ADC-1;
+  ENABLE_DI;
+}
 
-   ADMUX=1<<6|1<<5|ADC0;//vcc as vref, left adjusted result, will use it in 8 bit mode, AD0 channel on board
-   ADCSRA=1<<7|1<<5|7;//enable, auto trigger enable, select 128 prescaling
-   ADCSRB=1<<7|0x05;//high speed enabled, timer1 counter match B
+void setup()
+{
+  Serial.begin(921600);
+  DDRB|=1<<2|1;//isr pins: 8,10
+  DDRB|=1<<3|1<<4;//square signals
+  init_digital_input_timer();
+  init_adc();
+  switchmode();
+  sei();
+  DDRB|=1<<5;//LED
 
 }
 
-void switch2adc(void)
+void init_digital_input_timer()
 {
-   TIMSK0&=~(1<<1);
-   TIMSK0|= 1<<2;
-   TCNT1L=0;
-   TCNT1H=0;
-   ADCSRA|=(1<<6)|(1<<3);//start conversion and enable interrupt
+   TCCR1B = PRESCALE;
+   OCR1AH = 0;
+   OCR1AL = COMPARE;
 }
 
-void switch2digitalinput(void)
+void init_adc()
 {
-    TIMSK0&=~(1<<2);
-    ADCSRA&=~(1<<6)|(1<<3);
-    TIMSK1|= 1<<1;
+  ADMUX|=1<<6|1<<5|ADC0;
+  ADCSRA|=1<<7|1<<6|1<<5|1<<3|6;//prescale=64
+  ADCSRB|=3;//timer counter 0 match a
+  //DIDR0 =0x3f;//disable digital inputs on all analog input channels
+  //timer 0
+  TCCR0B = 3;
+  OCR0A = 30;//8kHz
+  
 }
-void switchmode(byte mode)
-{
-  cli();
-  switch(mode)
-  {
-    case IDLE:
 
-        break;
-    case DIGITAL_INPUTS:
-        sei();
-        switch2digitalinput();
-        break;
-    case ANALOG_INPUTS:
-        sei();
-        switch2adc();
-        break;
+byte cmd = 0;
+void loop()
+{
+  
+  cmd = Serial.read();
+  switch (cmd) {
+    case 'A':
+      DISABLE_DI;
+      ENABLE_ADC;
+      break;
+    case 'D':
+      DISABLE_ADC;
+      ENABLE_DI;
+      break;
     default:
       break;
   }
-}
-
-void setup() {
-  cli();
-  //pin 13 output to 5 V
-  DDRB|=1<<5;
-  PORTB|=1<<5;
-  //pin 12 1 kHz
-  DDRB|=1<<4;
-  //pin 11 1 kHz 25% duty cycle
-  DDRB|=1<<3;
-  //pin 10 isr
-  DDRB|=1<<2;
-  //read port 9
-  DDRB&=~(1<<1);
-  Serial.begin(921600);
-  Serial.setTimeout(10);
-  //Sampling digital inputs:
-  DDRD=0;
-  //Timer 1 is sampling portd
-  TCCR1B=PRESCALE;//No prescaling, 1 tick corresponds to 1/16 us
-  OCR1AL = (byte)(COMPARE-1)&0x00ff;
-  OCR1AH = (byte)((COMPARE-1)>>8)&0x00ff;//for some reason this value has no effect
-  TCNT1L=0;
-  TCNT1H=0;
-  init_adc();
-/*  run_mode=DIGITAL_INPUTS;//IDLE;
-  switchmode(run_mode);*/
-  if (((PINB>>1)&0x01)==0)
-  {
-    PORTB&=~(1<<1);
-  }
-  else
-  {
-    PORTB|=1<<1;
-  }
-  
-    run_mode=(PINB>>2)&0x01+1;
-//    run_mode=  DIGITAL_INPUTS;
-  switchmode(run_mode);
-  
-/*    run_mode=  ANALOG_INPUTS;
-      switchmode(run_mode);*/
-
-
-}
-
-int byte_read;
-
-void loop() {
   PORTB |=(1<<4);
   PORTB |=(1<<3);
-  delayMicroseconds(250);
+  delayMicroseconds(250*3);
   PORTB &=~(1<<4);
-  delayMicroseconds(250);
+  delayMicroseconds(250*3);
   PORTB &=~(1<<3);
-  delayMicroseconds(500);
+  delayMicroseconds(500*3);
 }

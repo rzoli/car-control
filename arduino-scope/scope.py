@@ -48,23 +48,41 @@ class OScope(gui.SimpleAppWindow):
         self.setMinimumWidth(1200)#Setting the minimum size of the main user interface
         self.setMinimumHeight(750)
         
+        self.difs=25e3
+        self.aifs=8e3
+        
+        
         self.fsample=25e3
         self.timebase=10e-3#s
         self.ts=1.0/self.fsample
+        br=921600
+        #br=115200
         try:
-            self.s=serial.Serial('/dev/ttyACM0',baudrate=921600,timeout=1)
+            self.s=serial.Serial('/dev/ttyACM0',baudrate=br,timeout=1)
         except serial.SerialException:
-            self.s=serial.Serial('/dev/ttyACM1',baudrate=921600,timeout=1)
+            self.s=serial.Serial('/dev/ttyACM1',baudrate=br,timeout=1)
         
         self.timer = QtCore.QTimer()
         self.timer.timeout.connect(self.read_samples)
         self.timer.start(int(1000.*self.timebase))
         self.connect(self.cw.start_stop, QtCore.SIGNAL('clicked()'), self.start_stop)
+        self.connect(self.cw.analog_selected.input, QtCore.SIGNAL('stateChanged(int)'), self.switch_mode)
         self.run=False
         
     def start_stop(self):
         self.run = False if self.run else True
         self.cw.start_stop.setText('Start' if not self.run else 'Stop')
+        
+    def switch_mode(self,state):
+        if state==2:
+            self.fsample = self.aifs
+            for i in range(10):
+                self.s.write('A')
+        elif state==0:
+            self.fsample = self.difs
+            for i in range(10):
+                self.s.write('D')
+        self.ts=1.0/self.fsample
         
     def read_samples(self):
         if not self.run:
