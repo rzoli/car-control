@@ -55,6 +55,18 @@ class MotorControl(object):
         cmd_par = self.parse_parameters(command)
         return resp_par[0] == cmd_par[0] and resp_par[-2:] == cmd_par[-2:]
         
+    def set_motor_voltage(self,channel,voltage):
+        logging.info('set_motor_voltage({0},{1})'.format(channel,voltage))
+        motor2pwm_channel=2*(channel-1)
+        if voltage>0:
+            pwm_channel1=motor2pwm_channel
+            pwm_channel2=motor2pwm_channel+1
+        else:
+            pwm_channel1=motor2pwm_channel+1
+            pwm_channel2=motor2pwm_channel
+        self.set_pwm(self,pwm_channel1,voltage)
+        self.set_pwm(self,pwm_channel2,1000)
+        
     def stop(self):
         for channel in ['LEFT','RIGHT']:
             command = 'set_pwm({0},0,0)'.format(self.fwconfig[channel + '_MOTOR'])        

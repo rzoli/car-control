@@ -105,17 +105,23 @@ class RemoteControl(gui.VisexpmanMainWindow):
             
     def _get_params_config(self):
         pc =  [
-                
-                {'name': 'Microcontroller level', 'type': 'group', 'expanded' : True, 'children': [
+                {'name': 'Motor Mode', 'type': 'list', 'values': ['voltage', 'pwm', 'wheels']},
+                {'name': 'Microcontroller', 'type': 'group', 'expanded' : True, 'children': [
                     {'name': 'Serial port', 'type': 'str', 'value': '/dev/ttyUSB0'},
                     {'name': 'Connection', 'type': 'list', 'values': ['serial port', 'tcp/ip'], 'value': 'serial port'},
                     {'name': 'Timeout', 'type': 'float', 'value': 0.5, 'suffix': 's'},
                     ]},
+                {'name': 'Vehicle Control', 'type': 'group', 'expanded' : True, 'children': [
+                    {'name': 'Motor1 voltage', 'type': 'float', 'value': 0.0, 'suffix': '%'},
+                    {'name': 'Motor2 voltage', 'type': 'float', 'value': 0.0, 'suffix': '%'},
+                    {'name': 'Wheel voltage', 'type': 'float', 'value': 0.0, 'suffix': '%'},
+                    {'name': 'Wheels voltage difference', 'type': 'float', 'value': 0.0, 'suffix': '%'},
+                    ]},
                     
                     ]
-        pc[0]['children'].extend([{'name': '{0}'.format(l), 'type': 'bool', 'value': False} for l in [k for k in parse_firmware_config().keys() if 'LED' in k]])
+        pc[1]['children'].extend([{'name': '{0}'.format(l), 'type': 'bool', 'value': False} for l in [k for k in parse_firmware_config().keys() if 'LED' in k]])
         pwm_channels = ['PWM {0}'.format(pwmc) for pwmc in ['PORTE0', 'PORTE1', 'PORTE2', 'PORTE3']]
-        pc[0]['children'].extend([{'name': p, 'type': 'float', 'value': 0.0, 'suffix': '%'} for p in pwm_channels])
+        pc[1]['children'].extend([{'name': p, 'type': 'float', 'value': 0.0, 'suffix': '%'} for p in pwm_channels])
         return pc
         
     def settings_changed(self):
@@ -127,10 +133,29 @@ class RemoteControl(gui.VisexpmanMainWindow):
                 if self.setting_values[pn]!=state and hasattr(self,'mc'):
                     self.mc.set_led(pn[:-4],state)
             #Check if PWM status was changed
-            for pn in [k for k in self.setting_values.keys() if 'PWM' in k]:
-                voltage=new_values[pn]
-                if self.setting_values[pn]!=voltage and hasattr(self,'mc'):
-                    self.mc.set_pwm(int(pn[-1]),int(voltage*10))
+            if self.setting_values['Motor Mode']=='pwm':
+                for pn in [k for k in self.setting_values.keys() if 'PWM' in k]:
+                    pwm=new_values[pn]
+                    if self.setting_values[pn]!=pwm and hasattr(self,'mc'):
+                        self.mc.set_pwm(int(pn[-1]),int(pwm*10))
+            elif self.setting_values['Motor Mode']=='voltage':
+                for pn in [k for k in self.setting_values.keys() if 'Motor' in k and 'voltage' in k]:
+                    voltage=new_values[pn]
+                    channel = 1 if '1' in pn else 2
+                    if self.setting_values[pn]!=voltage and hasattr(self,'mc'):
+                        self.mc.set_motor_voltage(channel,int(voltage)*10)
+            elif self.setting_values['Motor Mode']=='wheels':
+                pn1='Wheel voltage'
+                pn2='Wheels voltage difference'
+                if self.setting_values[pn1]!=new_values[pn1] or self.setting_values[pn2]!=new_values[pn2]:
+                        v=int(new_values[pn1]*10)
+                        d=int(new_values[pn2]*10)
+                        if v<0:
+                            v2=v-d
+                        else:
+                            v2=v+d
+                        self.mc.set_motor_voltage(1,v)
+                        self.mc.set_motor_voltage(2,v2)
         self.setting_values = new_values
         
     def connect_action(self):
