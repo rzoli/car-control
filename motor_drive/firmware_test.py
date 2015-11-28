@@ -46,7 +46,7 @@ class MotorControl(object):
         logging.info('command send: {0}'.format(command))
         
     def set_pwm(self,channel,pulse_width):
-        command = 'set_pwm({0},{1},{2})'.format(channel, int(pulse_width))
+        command = 'set_pwm({0},{1})'.format(channel, int(pulse_width))
         self.send_command(command)
         time.sleep(0.1)
         response = self.s.read(len(command)*2)
