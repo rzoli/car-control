@@ -102,7 +102,7 @@ class MotorControl(object):
         self.send_command(command)
         response = self.s.read(len(command)+2*6)
         logging.info('response: {0}'.format(response))
-        print response
+        return response
         
     def read_rpm(self):
         pass

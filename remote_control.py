@@ -35,7 +35,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     level=logging.DEBUG)
         self.setWindowTitle('Robot GUI')
         icon_folder = os.path.join(os.path.split(__file__)[0], 'icons')
-        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'set_pwm', 'exit'], icon_folder = icon_folder)
+        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'set_motor', 'read_adc', 'exit'], icon_folder = icon_folder)
         self.addToolBar(self.toolbar)
         self.console = gui.PythonConsole(self, selfw = self)
         self.console.setMinimumWidth(800)
@@ -138,24 +138,6 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     pwm=new_values[pn]
                     if self.setting_values[pn]!=pwm and hasattr(self,'mc'):
                         self.mc.set_pwm(int(pn[-1]),int(pwm*10))
-            elif self.setting_values['Motor Mode']=='voltage':
-                for pn in [k for k in self.setting_values.keys() if 'Motor' in k and 'voltage' in k]:
-                    voltage=new_values[pn]
-                    channel = 1 if '1' in pn else 2
-                    if self.setting_values[pn]!=voltage and hasattr(self,'mc'):
-                        self.mc.set_motor_voltage(channel,int(voltage)*10)
-            elif self.setting_values['Motor Mode']=='wheels':
-                pn1='Wheel voltage'
-                pn2='Wheels voltage difference'
-                if self.setting_values[pn1]!=new_values[pn1] or self.setting_values[pn2]!=new_values[pn2]:
-                        v=int(new_values[pn1]*10)
-                        d=int(new_values[pn2]*10)
-                        if v<0:
-                            v2=v-d
-                        else:
-                            v2=v+d
-                        self.mc.set_motor_voltage(1,v)
-                        self.mc.set_motor_voltage(2,v2)
         self.setting_values = new_values
         
     def connect_action(self):
@@ -173,9 +155,26 @@ class RemoteControl(gui.VisexpmanMainWindow):
         if hasattr(self, 'mc'):
             self.log(self.mc.echo(1))
         
-    def set_pwm_action(self):
+    def set_motor_action(self):
         if hasattr(self, 'mc'):
-            self.printc(self.mc)
+            if self.setting_values['Motor Mode']=='wheels':
+                pn1='Wheel voltage'
+                pn2='Wheels voltage difference'
+                v=int(new_values[pn1]*10)
+                d=int(new_values[pn2]*10)
+                if v<0:
+                    v2=v-d
+                else:
+                    v2=v+d
+                self.mc.set_motor_voltage(1,v)
+                self.mc.set_motor_voltage(2,v2)
+            elif self.setting_values['Motor Mode']=='voltage':
+                self.mc.set_motor_voltage(1,int(self.setting_values['Motor1 voltage'])*10)
+                self.mc.set_motor_voltage(1,int(self.setting_values['Motor2 voltage'])*10)
+                
+    def read_adc_action(self):
+        if hasattr(self, 'mc'):
+            self.mc.read_adc()
             
     def exit_action(self):
         

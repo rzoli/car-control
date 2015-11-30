@@ -66,6 +66,32 @@ ISR(TCC1_CCA_vect)
 	}
 }
 
+void init_adc(void)
+{
+    
+    ADCA.REFCTRL|=2<<4|1;//vref on porta selected, tempref enabled
+    ADCA.PRESCALER=1;//125 kHz sampling rate using div8
+    PORTA.DIRSET &= ~0xC0;//porta 6 and 7 bits
+    
+    
+  
+    
+    
+    //temperature:
+    ADCA.CH0.CTRL=0;//internal channels selected
+    ADCA.CH0.MUXCTRL=0;//temp channel selected
+    
+    //adc ch0,1:
+    ADCA.CH1.CTRL|=1;
+    ADCA.CH1.MUXCTRL=6<<3;
+    ADCA.CH2.CTRL|=1;
+    ADCA.CH2.MUXCTRL=7<<3;
+    
+    ADCA.CTRLA|=1;//enable adc
+}
+
+
+
 void init_mcu(void)
 {
 //    stdout = &mystdout;
@@ -73,7 +99,7 @@ void init_mcu(void)
     CLKSYS_Enable( OSC_RC2MEN_bm );
     CLKSYS_Prescalers_Config( CLK_PSADIV_1_gc, CLK_PSBCDIV_1_1_gc );
     do {} while ( CLKSYS_IsReady( OSC_RC2MRDY_bm ) == 0 );
-    CLKSYS_Main_ClockSource_Select( CLK_SCLKSEL_RC2M_gc );
+    CLKSYS_Main_ClockSource_Select( CLK_SCLKSEL_RC2M_gc );//2 MHz selected
     //IO ports
     PORTA.DIRSET = 1<<GREEN_LED | 1 << RED_LED;
     PORTA.OUTSET = 1<<GREEN_LED | 1 << RED_LED;
@@ -110,7 +136,7 @@ void init_mcu(void)
     motor->CCC = 0;
     motor->CCD = 0;
     
-    
+    init_adc();
     //Input capture/rpm measurement
     //other channel might be TCE1
     

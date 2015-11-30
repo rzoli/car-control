@@ -109,8 +109,18 @@ void DeviceCommands::set_led(uint8_t color, uint8_t state)
 void DeviceCommands::read_adc(void)
 {
     uint16_t val1=1000;
-    int16_t val2=-2000;
-    *this<<"read_adc("<<val1<<","<<val2<<")";
+    uint16_t val2=2000;
+    uint16_t val3=2000;
+    uint16_t temp,ch6,ch7;
+    ADCA.CTRLA |=0x7<<2;
+    while ((ADCA.INTFLAGS&0x7)!=0x7) {}
+    temp = ADCA.CH0.RES;
+    ch6 = ADCA.CH1.RES;
+    ch7 = ADCA.CH2.RES;
+    val1=temp;
+    val2=ch6;
+    val3=ch7;
+    *this<<"read_adc("<<val1<<","<<val2<<","<<val3<<")";
 }
 
 uint8_t DeviceCommands::next_command(void)
