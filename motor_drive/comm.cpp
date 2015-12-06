@@ -111,9 +111,22 @@ void DeviceCommands::read_adc(void)
     uint16_t val1=1000;
     uint16_t val2=2000;
     uint16_t val3=2000;
-    uint16_t temp,ch6,ch7;
-    ADCA.CTRLA |=0x7<<2;
-    while ((ADCA.INTFLAGS&0x7)!=0x7) {}
+    uint16_t temp;
+    uint16_t ch6;
+    uint16_t ch7;
+    ADCA.CH0.CTRL|=1<<7;
+    ADCA.CH1.CTRL|=1<<7;
+    ADCA.CH2.CTRL|=1<<7;
+    
+    while ((ADCA.CH0.INTFLAGS&0x1)==0) {}
+    while ((ADCA.CH1.INTFLAGS&0x1)==0) {}
+    while ((ADCA.CH2.INTFLAGS&0x1)==0) {}
+    
+    ADCA.CH0.INTFLAGS=1;
+    ADCA.CH1.INTFLAGS=1;
+    ADCA.CH2.INTFLAGS=1;
+    
+    //ADCA.INTFLAGS|=7;
     temp = ADCA.CH0.RES;
     ch6 = ADCA.CH1.RES;
     ch7 = ADCA.CH2.RES;

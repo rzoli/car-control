@@ -170,7 +170,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
                 self.mc.set_motor_voltage(2,v2)
             elif self.setting_values['Motor Mode']=='voltage':
                 self.mc.set_motor_voltage(1,int(self.setting_values['Motor1 voltage'])*10)
-                self.mc.set_motor_voltage(1,int(self.setting_values['Motor2 voltage'])*10)
+                self.mc.set_motor_voltage(2,int(self.setting_values['Motor2 voltage'])*10)
                 
     def read_adc_action(self):
         if hasattr(self, 'mc'):

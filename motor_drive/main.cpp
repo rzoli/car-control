@@ -69,7 +69,7 @@ ISR(TCC1_CCA_vect)
 void init_adc(void)
 {
     
-    ADCA.REFCTRL|=2<<4|1;//vref on porta selected, tempref enabled
+    ADCA.REFCTRL|=(1<<4)|1;//vref on porta selected, tempref enabled
     ADCA.PRESCALER=1;//125 kHz sampling rate using div8
     PORTA.DIRSET &= ~0xC0;//porta 6 and 7 bits
     
@@ -88,6 +88,7 @@ void init_adc(void)
     ADCA.CH2.MUXCTRL=7<<3;
     
     ADCA.CTRLA|=1;//enable adc
+    _delay_ms(10);//wait till adc clock settles
 }
 
 

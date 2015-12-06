@@ -57,15 +57,19 @@ class MotorControl(object):
         
     def set_motor_voltage(self,channel,voltage):
         logging.info('set_motor_voltage({0},{1})'.format(channel,voltage))
-        motor2pwm_channel=2*(channel-1)
+        self.motor2pwm_channel=2*(channel-1)
         if voltage>0:
-            pwm_channel1=motor2pwm_channel
-            pwm_channel2=motor2pwm_channel+1
+            self.pwm_channel1=self.motor2pwm_channel
+            self.pwm_channel2=self.motor2pwm_channel+1
         else:
-            pwm_channel1=motor2pwm_channel+1
-            pwm_channel2=motor2pwm_channel
-        self.set_pwm(self,pwm_channel1,voltage)
-        self.set_pwm(self,pwm_channel2,1000)
+            self.pwm_channel1=self.motor2pwm_channel+1
+            self.pwm_channel2=self.motor2pwm_channel
+        if voltage==0:
+            self.set_pwm(self.pwm_channel1,0)
+            self.set_pwm(self.pwm_channel2,0)
+        else:
+            self.set_pwm(self.pwm_channel1,1000-abs(voltage))
+            self.set_pwm(self.pwm_channel2,1000)
         
     def stop(self):
         for channel in ['LEFT','RIGHT']:
@@ -100,7 +104,7 @@ class MotorControl(object):
     def read_adc(self):
         command = 'read_adc()'
         self.send_command(command)
-        response = self.s.read(len(command)+2*6)
+        response = self.s.read(len(command)+3*5)
         logging.info('response: {0}'.format(response))
         return response
         
