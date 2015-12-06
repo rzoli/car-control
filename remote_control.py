@@ -176,7 +176,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
         if hasattr(self, 'mc'):
             self.mc.read_adc()
             
-    def read_stop_action(self):
+    def stop_action(self):
         if hasattr(self, 'mc'):
             self.mc.stop()
             
