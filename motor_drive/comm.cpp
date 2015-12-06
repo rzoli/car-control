@@ -93,6 +93,16 @@ void DeviceCommands::set_pwm(uint8_t channel, uint16_t pulsewidth)
     }
     *this<<"set_pwm("<<channel <<","<<register_value<<")";
 }
+
+void DeviceCommands::stop(void)
+{
+    motor->CCA = 0;
+    motor->CCB = 0;
+    motor->CCC = 0;
+    motor->CCD = 0;
+    *this<<"stop()";
+}
+
 void DeviceCommands::set_led(uint8_t color, uint8_t state)
 {
     if (state == 0)
@@ -151,6 +161,9 @@ uint8_t DeviceCommands::next_command(void)
                 set_led((uint8_t)command.parameters[0], (uint8_t)command.parameters[1]);
             else if (strcmp(command.name, "read_adc") == 0)
                 read_adc();
+            else if (strcmp(command.name, "stop") == 0)
+                stop();
+
             
             
   //          comm << cp.command.name<<"\t"<<cp.command.nparameters<<"\n";

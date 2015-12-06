@@ -21,5 +21,6 @@ class DeviceCommands: public Comm, public CommandParser
         void set_led(uint8_t color, uint8_t state);
         void read_adc(void);
         void read_rpm(void);
+        void stop(void);
     private:
 };

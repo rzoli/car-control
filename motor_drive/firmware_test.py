@@ -73,12 +73,12 @@ class MotorControl(object):
         
     def stop(self):
         for channel in ['LEFT','RIGHT']:
-            command = 'set_pwm({0},0,0)'.format(self.fwconfig[channel + '_MOTOR'])        
+            command = 'stop()'
             self.send_command(command)
             response = self.s.read(len(command)+4)
             logging.info('response: {0}'.format(response))
             time.sleep(0.1)
-            return response == command.replace('0)','0,0,0)')
+            return response == command
         
     def set_motor_speed(self,channel,speed):
         '''

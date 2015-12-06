@@ -35,7 +35,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     level=logging.DEBUG)
         self.setWindowTitle('Robot GUI')
         icon_folder = os.path.join(os.path.split(__file__)[0], 'icons')
-        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'set_motor', 'read_adc', 'exit'], icon_folder = icon_folder)
+        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'set_motor', 'read_adc', 'stop', 'exit'], icon_folder = icon_folder)
         self.addToolBar(self.toolbar)
         self.console = gui.PythonConsole(self, selfw = self)
         self.console.setMinimumWidth(800)
@@ -175,6 +175,10 @@ class RemoteControl(gui.VisexpmanMainWindow):
     def read_adc_action(self):
         if hasattr(self, 'mc'):
             self.mc.read_adc()
+            
+    def read_stop_action(self):
+        if hasattr(self, 'mc'):
+            self.mc.stop()
             
     def exit_action(self):
         
