@@ -2,7 +2,7 @@ import sys
 import os.path
 import os
 import subprocess
-source_files = ['main.cpp', 'clksys_driver.cpp',  'usart_driver.cpp',  'command_protocol.cpp', 'comm.cpp']
+source_files = ['main.cpp', 'clksys_driver.cpp',  'usart_driver.cpp',  'command_protocol.cpp', 'comm.cpp', 'adc_driver.cpp']
 output_file = 'fw'
 mcu = 'atxmega32a4'
 optimization_level = 's'

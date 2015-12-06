@@ -17,6 +17,7 @@ test TEST
 #include "config.h"
 #include "clksys_driver.h"
 #include "usart_driver.h"
+#include "adc_driver.h"
 #include "utils.h"
 #include "comm.h"
 #include <util/delay.h>
@@ -68,6 +69,8 @@ ISR(TCC1_CCA_vect)
 
 void init_adc(void)
 {
+    //load calibration value
+    ADC_CalibrationValues_Load(&ADCA);
     
     ADCA.REFCTRL|=(1<<4)|1;//vref on porta selected, tempref enabled
     ADCA.PRESCALER=1;//125 kHz sampling rate using div8
