@@ -29,6 +29,9 @@ class RemoteControl(gui.VisexpmanMainWindow):
         if QtCore.QCoreApplication.instance() is None:
             qt_app = Qt.QApplication([])
         gui.VisexpmanMainWindow.__init__(self)
+        
+        self.setWindowIcon(QtGui.QIcon(os.path.join(os.path.split(__file__)[0],'icons', 'mr.jpg')))
+        
         self.logfile = os.path.join(tempfile.gettempdir(), 'robot_gui_{0}.txt'.format(int(time.time())))
         logging.basicConfig(filename= self.logfile,
                     format='%(asctime)s %(levelname)s\t%(message)s',
