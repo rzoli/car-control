@@ -38,7 +38,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     level=logging.DEBUG)
         self.setWindowTitle('Robot GUI')
         icon_folder = os.path.join(os.path.split(__file__)[0], 'icons')
-        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'set_motor', 'read_adc', 'stop', 'exit'], icon_folder = icon_folder)
+        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'set_motor', 'read_adc', 'start_video', 'stop', 'exit'], icon_folder = icon_folder)
         self.addToolBar(self.toolbar)
         self.console = gui.PythonConsole(self, selfw = self)
         self.console.setMinimumWidth(800)
@@ -75,6 +75,12 @@ class RemoteControl(gui.VisexpmanMainWindow):
         self.image_timer.timeout.connect(self.get_image)
         self.image_timer.start(100)
         
+        self.nframes=100
+        self.width=800#320
+        self.height=600#240
+        self.iso=100
+        self.exposure=10
+        self.delay=100
         
         if QtCore.QCoreApplication.instance() is not None:
             QtCore.QCoreApplication.instance().exec_()
@@ -95,16 +101,6 @@ class RemoteControl(gui.VisexpmanMainWindow):
         if len(newlogtext)!=len(self.logtext):
             self.logtext=newlogtext
             self.logw.update(self.logtext)
-        
-    def start_remote_capture(self,duration):
-        import paramiko
-        ssh=paramiko.SSHClient()
-        ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
-        pw, ok = QtGui.QInputDialog.getText(self, QtCore.QString('Password'), QtCore.QString(''), mode=QtGui.QLineEdit.Password)
-        ssh.connect('192.168.0.10', port=9127, username='rz', password=str(pw))
-        ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('sudo python /data/capture.py {0}'.format(duration))
-#        print ssh_stdout.read()
-#        print ssh_stderr.read()
             
     def _get_params_config(self):
         pc =  [
@@ -119,6 +115,14 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     {'name': 'Motor2 voltage', 'type': 'float', 'value': 0.0, 'suffix': '%'},
                     {'name': 'Wheel voltage', 'type': 'float', 'value': 0.0, 'suffix': '%'},
                     {'name': 'Wheels voltage difference', 'type': 'float', 'value': 0.0, 'suffix': '%'},
+                    ]},
+                {'name': 'Camera', 'type': 'group', 'expanded' : True, 'children': [
+                    {'name': 'N frames', 'type': 'int', 'value': 100},
+                    {'name': 'Width', 'type': 'int', 'value': 320},
+                    {'name': 'Height', 'type': 'int', 'value': 240},
+                    {'name': 'ISO', 'type': 'int', 'value': 100},
+                    {'name': 'Exposure', 'type': 'int', 'value': 10},
+                    {'name': 'Delay', 'type': 'int', 'value': 50, 'suffix': 'ms'},
                     ]},
                     
                     ]
@@ -191,10 +195,50 @@ class RemoteControl(gui.VisexpmanMainWindow):
         self.log('Exit')
         self.close()
         
+    def start_video_action(self):
+        self.capture()
+        
     def log(self, msg, loglevel='info'):
         getattr(logging, loglevel)(str(msg))
         self.logw.update(fileop.read_text_file(self.logfile))
         
+    def capture(self):
+        self.pw='hejdejo1'
+        if not hasattr(self, 'pw'):
+            self.pw, ok = QtGui.QInputDialog.getText(self, QtCore.QString('Password'), QtCore.QString(''), mode=QtGui.QLineEdit.Password)
+        #ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command('sudo python /data/capture.py {0}'.format(duration))
+        pars={
+                'pw':self.pw,
+                'nframes':self.setting_values['N frames'],
+              'width':self.setting_values['Width'],
+              'height':self.setting_values['Height'],
+              'iso':self.setting_values['ISO'],
+              'exposure':self.setting_values['Exposure'],
+              'delay':self.setting_values['Delay']}
+        if 1:
+            import threading
+            p=threading.Thread(target=send_capture_command,kwargs=pars)
+            p.start()
+        else:
+            send_capture_command(**pars)
+        
+        
+def send_capture_command(**pars):
+    cmd='cd /data/camera_streamer&&sudo nohup ./camera_streamer {0} {1} {2} {3} {4} {5}&'.format(pars['nframes'],pars['width'],pars['height'],pars['iso'],pars['exposure'],pars['delay'])
+    logging.info(cmd)
+    #return
+    import paramiko
+    ssh=paramiko.SSHClient()
+    ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
+    ssh.connect('192.168.0.11', port=9127, username='rz', password=str(pars['pw']))
+    ssh_stdin, ssh_stdout, ssh_stderr = ssh.exec_command(cmd)
+    e=ssh_stdout.read()
+    logging.info(e)
+    e=ssh_stderr.read()
+    if len(e)>0:
+        logging.error(e)
+#    except:
+#        pass
     
 class VideoStreamer(multiprocessing.Process):
     def __init__(self,image, command):
@@ -203,6 +247,44 @@ class VideoStreamer(multiprocessing.Process):
         multiprocessing.Process.__init__(self)
         
     def run(self):
+        import socket,io,numpy
+        from PIL import Image
+        from StringIO import StringIO
+        UDP_IP = ""
+        UDP_PORT = 8000
+        sock = socket.socket(socket.AF_INET,socket.SOCK_DGRAM)
+        sock.bind((UDP_IP, UDP_PORT))
+        sock.settimeout(0.3)
+        buffer=''
+        framect=0
+        while True:
+            if not self.command.empty():  
+                print self.command.get()
+                break
+            try:
+                data, addr = sock.recvfrom(int(2**16))
+                buffer=data
+                start=buffer.find('start')
+                end=buffer.find('end')
+                if start!=-1 and end!=-1:
+                    #logging.info((start,end,len(data)))
+                    if end<start :
+                        #buffer=buffer[end:]
+                        pass
+                    else:
+                        img=buffer[start+5:end]
+                        img=numpy.asarray(Image.open(StringIO(img)))
+                        #buffer=buffer[end:]
+                        framect+=1
+                        #if framect>10:
+                        self.image.put(img)
+            except:
+                if 0: logging.error(traceback.format_exc())
+        sock.close()
+        #logging.info(buffer)
+
+        
+    def run1(self):
         ip='192.168.0.10'
         port=8001
         import zmq
@@ -223,7 +305,7 @@ class VideoStreamer(multiprocessing.Process):
                 pass
             time.sleep(1e-3)
     
-    def run1(self):
+    def run2(self):
         import io
         import socket
         import struct
