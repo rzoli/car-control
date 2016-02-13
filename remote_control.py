@@ -281,69 +281,6 @@ class VideoStreamer(multiprocessing.Process):
             except:
                 if 0: logging.error(traceback.format_exc())
         sock.close()
-        #logging.info(buffer)
 
-        
-    def run1(self):
-        ip='192.168.0.10'
-        port=8001
-        import zmq
-        import io
-        context = zmq.Context()
-        socket = context.socket(zmq.PAIR)
-        socket.connect("tcp://{0}:{1}".format(ip, port))
-
-        ct=0
-        while True:
-            if not self.command.empty():  
-                print self.command.get()
-                break
-            try:
-                message = socket.recv(flags=zmq.NOBLOCK)
-                self.image.put(numpy.asarray(Image.open(io.BytesIO(message))))
-            except zmq.ZMQError:
-                pass
-            time.sleep(1e-3)
-    
-    def run2(self):
-        import io
-        import socket
-        import struct
-        from PIL import Image
-        self.aborted=False
-
-        # Start a socket listening for connections on 0.0.0.0:8000 (0.0.0.0 means
-        # all interfaces)
-        server_socket = socket.socket()
-        server_socket.bind(('0.0.0.0', 8000))
-        while True:
-            server_socket.listen(0)
-
-        
-            # Accept a single connection and make a file-like object out of it
-            self.connection = server_socket.accept()[0].makefile('rb')
-            print 'connected'
-            try:
-                while True:
-                    if not self.command.empty():  
-                        print self.command.get()
-                        self.aborted=True
-                        break
-                    try:
-                        image_len = struct.unpack('<L', self.connection.read(4))[0]
-                        if not image_len:
-                            break
-                    
-                        self.image.put(numpy.asarray(Image.open(io.BytesIO(self.connection.read(image_len)))))
-                        print 'image read'
-                    except:
-                        pass
-                    time.sleep(1e-3)
-            finally:
-                print 'closing'
-                self.connection.close()
-                server_socket.close()
-            if self.aborted: break
-                    
 if __name__ == '__main__':
     RemoteControl()
