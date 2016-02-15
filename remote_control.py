@@ -38,7 +38,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     level=logging.DEBUG)
         self.setWindowTitle('Robot GUI')
         icon_folder = os.path.join(os.path.split(__file__)[0], 'icons')
-        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'set_motor', 'read_adc', 'start_video', 'stop', 'exit'], icon_folder = icon_folder)
+        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'set_motor', 'backward', 'forward', 'turn_left', 'turn_right', 'run_maneuver', 'read_adc', 'start_video', 'stop', 'exit'], icon_folder = icon_folder)
         self.addToolBar(self.toolbar)
         self.console = gui.PythonConsole(self, selfw = self)
         self.console.setMinimumWidth(800)
@@ -115,6 +115,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     {'name': 'Motor2 voltage', 'type': 'float', 'value': 0.0, 'suffix': '%'},
                     {'name': 'Wheel voltage', 'type': 'float', 'value': 0.0, 'suffix': '%'},
                     {'name': 'Wheels voltage difference', 'type': 'float', 'value': 0.0, 'suffix': '%'},
+                    {'name': 'Movement time', 'type': 'float', 'value': 0.0, 'suffix': 's'},
                     ]},
                 {'name': 'Camera', 'type': 'group', 'expanded' : True, 'children': [
                     {'name': 'N frames', 'type': 'int', 'value': 100},
@@ -165,6 +166,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
     def set_motor_action(self):
         if hasattr(self, 'mc'):
             if self.setting_values['Motor Mode']=='wheels':
+                new_values=self.settings.get_parameter_tree(True)
                 pn1='Wheel voltage'
                 pn2='Wheels voltage difference'
                 v=int(new_values[pn1]*10)
@@ -173,11 +175,9 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     v2=v-d
                 else:
                     v2=v+d
-                self.mc.set_motor_voltage(1,v)
-                self.mc.set_motor_voltage(2,v2)
+                self.mc.set_motors(v-d/2,v+d/2)
             elif self.setting_values['Motor Mode']=='voltage':
-                self.mc.set_motor_voltage(1,int(self.setting_values['Motor1 voltage'])*10)
-                self.mc.set_motor_voltage(2,int(self.setting_values['Motor2 voltage'])*10)
+                self.mc.set_motors(int(self.setting_values['Motor1 voltage'])*10,int(self.setting_values['Motor2 voltage'])*10)
                 
     def read_adc_action(self):
         if hasattr(self, 'mc'):
@@ -186,6 +186,39 @@ class RemoteControl(gui.VisexpmanMainWindow):
     def stop_action(self):
         if hasattr(self, 'mc'):
             self.mc.stop()
+            
+    def move(self,direction):
+        if hasattr(self, 'mc'):
+            p=self.settings.get_parameter_tree(True)
+            logging.info('Motion for {0} s'.format(p['Movement time']))
+            d=1 if direction else -1
+            self.mc.set_motors(d*p['Wheel voltage']*10,d*p['Wheel voltage']*10)
+            time.sleep(p['Movement time'])
+            self.mc.stop()
+        
+    def turn(self,direction):
+        if hasattr(self, 'mc'):
+            p=self.settings.get_parameter_tree(True)
+            logging.info('Turning for {0} s'.format(p['Movement time']))
+            d=1 if direction else -1
+            self.mc.set_motors(10*d*p['Wheels voltage difference'],10*-d*p['Wheels voltage difference'])
+            time.sleep(p['Movement time'])
+            self.mc.stop()
+            
+    def backward_action(self):
+        self.move(True)
+        
+    def forward_action(self):
+        self.move(False)
+        
+    def turn_left_action(self):
+        self.turn(True)
+        
+    def turn_right_action(self):
+        self.turn(False)
+        
+    def run_maneuver_action(self):
+        pass
             
     def exit_action(self):
         

@@ -70,6 +70,32 @@ class MotorControl(object):
         else:
             self.set_pwm(self.pwm_channel1,1000-abs(voltage))
             self.set_pwm(self.pwm_channel2,1000)
+            
+    def set_motors(self, voltage_left, voltage_right):
+        logging.info('set_motors({0},{1})'.format(voltage_left,voltage_right))
+        if voltage_left<0:
+            a=1000-abs(voltage_left)
+            b=1000
+        else:
+            b=1000-abs(voltage_left)
+            a=1000
+        if voltage_right<0:
+            c=1000-abs(voltage_right)
+            d=1000
+        else:
+            d=1000-abs(voltage_right)
+            c=1000
+        command = 'set_motors({0},{1},{2},{3})'.format(int(a),int(b),int(c),int(d))
+        self.send_command(command)
+        time.sleep(0.1)
+        response = self.s.read(len(command))
+        logging.info('response: {0}'.format(response))
+        resp_par = self.parse_parameters(response)
+        cmd_par = self.parse_parameters(command)
+        return resp_par == cmd_par
+            
+        
+        
         
     def stop(self):
         for channel in ['LEFT','RIGHT']:

@@ -12,6 +12,8 @@
 USART_data_t USART_data;//If passed as pointer to Comm, does not work
 TC0_t* motor;
 
+#define pw2reg(pulsewidth) (int)(pulsewidth*1e-3*PWM_PERIOD_REGISTER_VALUE)
+
 int Comm::uart_putchar(char c) {
     USART_TXBuffer_PutByte(&USART_data, c);
     return 0;
@@ -52,6 +54,44 @@ DeviceCommands::DeviceCommands(void)
 void DeviceCommands::echo(uint8_t par)
 {
     *this<<"echo("<<par<<")";
+}
+
+void DeviceCommands::set_motors(uint16_t a, uint16_t b, uint16_t c, uint16_t d)
+/*
+Sets all the 4 pwm channels at the same time
+*/
+{
+    char i;
+    static int register_value;
+    for(i=0;i<4;i++)
+    {  
+        switch (i)
+        {
+            case 0:
+                register_value = pw2reg(a);
+                motor->CCA = register_value;
+                break;
+            case 1:
+                register_value = pw2reg(b);
+                motor->CCB = register_value;
+                break;
+            case 2:
+                register_value = pw2reg(c);
+                motor->CCC = register_value;
+                break;
+            case 3:
+                register_value = pw2reg(d);
+                motor->CCD = register_value;
+                break;
+            default:
+            //Do nothing
+            break;
+        }
+    }
+    *this<<"set_motors("<<a <<","<<b<<","<<c<<","<<d<<")";
+        
+    
+    
 }
 
 void DeviceCommands::set_pwm(uint8_t channel, uint16_t pulsewidth)
@@ -157,6 +197,8 @@ uint8_t DeviceCommands::next_command(void)
                 echo(command.parameters[0]);
             else if (strcmp(command.name, "set_pwm") == 0)
                 set_pwm((uint8_t)command.parameters[0], command.parameters[1]);
+            else if (strcmp(command.name, "set_motors") == 0)
+                set_motors(command.parameters[0], command.parameters[1], command.parameters[2], command.parameters[3]);
             else if (strcmp(command.name, "set_led") == 0)
                 set_led((uint8_t)command.parameters[0], (uint8_t)command.parameters[1]);
             else if (strcmp(command.name, "read_adc") == 0)
