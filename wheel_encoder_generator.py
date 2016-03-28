@@ -1,13 +1,15 @@
 import numpy
-from PIL import Image
+from PIL import Image,ImageDraw
 from pylab import *
+
+dpi=300
+mm2pixel=dpi/25.4
 
 def wheel_encoder_template():
     outer_size = 20#mm
     shaft_size = numpy.array([3.5, 5.0])
     width=5
-    dpi=300
-    mm2pixel=dpi/25.4
+    
     template = numpy.zeros(tuple(2*[outer_size*mm2pixel+1]), dtype=numpy.uint8)
     template[0,:]=1
     template[-1,:]=1
@@ -26,5 +28,18 @@ def wheel_encoder_template():
     template = numpy.where(template==0,numpy.uint8(0),numpy.uint8(255))
     Image.fromarray(template).show()
     
-    
-wheel_encoder_template()
+def printable_wheel_encoder():
+    pulse_per_rev=12
+    radius=18#mm
+    radiusp=int(radius*mm2pixel)
+    angles=numpy.arange(0.,360.,360./(2*pulse_per_rev))
+    im=Image.new('L',(radiusp*2,radiusp*2),255)
+    draw = ImageDraw.Draw(im)
+    for i in range(len(angles)/2):
+        
+        draw.pieslice((0,0,2*radiusp,2*radiusp), int(round(angles[2*i])),int(round(angles[2*i+1])),0)
+        
+    draw.ellipse((0.5*radiusp,0.5*radiusp,1.5*radiusp,1.5*radiusp),0)
+    im.show()
+printable_wheel_encoder()
+#wheel_encoder_template()

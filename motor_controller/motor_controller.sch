@@ -396,10 +396,11 @@ netname=Vsup
 N 54500 48600 54500 47900 4
 N 54500 47900 55700 47900 4
 N 55700 47900 55700 48800 4
-T 40800 50200 9 10 1 0 0 0 6
+T 40800 50200 9 10 1 0 0 0 7
 TODO:
 Extra szuro kondik: kicsik es nagyok is. esetleg egy Zener, ami a tulfeszt lenyeli
 Motorvezerlo IC-k
 csatlakozo optoforkhoz
 Tapcsati
 Motorcstalkozok
+Servio vezerlo kimenetek
