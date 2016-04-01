@@ -29,9 +29,12 @@ def wheel_encoder_template():
     Image.fromarray(template).show()
     
 def printable_wheel_encoder():
-    pulse_per_rev=12
-    radius=18#mm
+    pulse_per_rev=18
+    radius=150/2.#18#mm
+    cm=120/2
+    
     radiusp=int(radius*mm2pixel)
+    c=int(cm*mm2pixel)
     angles=numpy.arange(0.,360.,360./(2*pulse_per_rev))
     im=Image.new('L',(radiusp*2,radiusp*2),255)
     draw = ImageDraw.Draw(im)
@@ -39,7 +42,10 @@ def printable_wheel_encoder():
         
         draw.pieslice((0,0,2*radiusp,2*radiusp), int(round(angles[2*i])),int(round(angles[2*i+1])),0)
         
-    draw.ellipse((0.5*radiusp,0.5*radiusp,1.5*radiusp,1.5*radiusp),0)
-    im.show()
+#    draw.ellipse((0.25*radiusp,0.25*radiusp,1.75*radiusp,1.75*radiusp),0)
+    draw.ellipse((radiusp-c,radiusp-c,radiusp+c,radiusp+c),255)
+    draw.ellipse((0,0,2*radiusp,2*radiusp),outline=0)
+    im.save('/tmp/wheel.png',dpi=(dpi,dpi))
+    #im.show()
 printable_wheel_encoder()
 #wheel_encoder_template()
