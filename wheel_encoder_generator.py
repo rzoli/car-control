@@ -31,21 +31,21 @@ def wheel_encoder_template():
 def printable_wheel_encoder():
     pulse_per_rev=18
     radius=150/2.#18#mm
-    cm=120/2
-    
+    width=15
+    shifted=True
     radiusp=int(radius*mm2pixel)
-    c=int(cm*mm2pixel)
-    angles=numpy.arange(0.,360.,360./(2*pulse_per_rev))
+    widthp=int(width*mm2pixel)
+    angles=numpy.arange(0.,360.,360./pulse_per_rev)
+    delta_angle=angles[1]-angles[0]
     im=Image.new('L',(radiusp*2,radiusp*2),255)
     draw = ImageDraw.Draw(im)
-    for i in range(len(angles)/2):
-        
-        draw.pieslice((0,0,2*radiusp,2*radiusp), int(round(angles[2*i])),int(round(angles[2*i+1])),0)
-        
-#    draw.ellipse((0.25*radiusp,0.25*radiusp,1.75*radiusp,1.75*radiusp),0)
-    draw.ellipse((radiusp-c,radiusp-c,radiusp+c,radiusp+c),255)
-    draw.ellipse((0,0,2*radiusp,2*radiusp),outline=0)
+    for angle in angles:
+        draw.pieslice((0,0,2*radiusp,2*radiusp), int(round(angle-0.25*delta_angle)),int(round(angle+0.25*delta_angle)),0)
+    draw.ellipse((widthp,widthp,2*radiusp-widthp,2*radiusp-widthp),fill=255)
+    if shifted:
+        for angle in angles:
+            draw.pieslice((widthp,widthp,2*radiusp-widthp,2*radiusp-widthp), int(round(angle-0.25*delta_angle+0.25*delta_angle)),int(round(angle+0.25*delta_angle+0.25*delta_angle)),0)
+        draw.ellipse((2*widthp,2*widthp,2*radiusp-2*widthp,2*radiusp-2*widthp),255)
     im.save('/tmp/wheel.png',dpi=(dpi,dpi))
-    #im.show()
 printable_wheel_encoder()
 #wheel_encoder_template()
