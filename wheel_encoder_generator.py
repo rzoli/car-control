@@ -48,5 +48,36 @@ def printable_wheel_encoder():
         draw.ellipse((2*widthp,2*widthp,2*radiusp-2*widthp,2*radiusp-2*widthp),255)
     draw.ellipse((0,0,2*radiusp,2*radiusp), outline=0)
     im.save('/tmp/wheel.png',dpi=(dpi,dpi))
-printable_wheel_encoder()
+    
+def encoder_barrel():
+    #Behavioral
+    diameter=150#mm
+    height=30#mm
+    pulse_per_rev=36
+    shifted=not False
+    print_half=True
+    #Robotcar
+    diameter=10#mm
+    height=10#mm
+    pulse_per_rev=10
+    shifted=False
+    print_half=False
+    perimeter=int(numpy.pi*diameter*mm2pixel)
+    if print_half:
+        perimeter/=2
+        pulse_per_rev/=2
+    heightp=int(mm2pixel*height)
+    im=Image.new('L',(perimeter,heightp),255)
+    draw = ImageDraw.Draw(im)
+    pulse_spacing=perimeter/pulse_per_rev
+    for i in range(pulse_per_rev):
+        draw.rectangle((i*pulse_spacing, 0,(i+0.5)*pulse_spacing,0.5*heightp if shifted else heightp),0)
+        if shifted:
+            draw.rectangle(((i+0.25)*pulse_spacing, 0.5*heightp,(i+0.75)*pulse_spacing,heightp),0)
+    draw.rectangle((0,0,perimeter,heightp),outline=120)
+    im.save('/tmp/barrel.png',dpi=(dpi,dpi))
+    
+    
+encoder_barrel()
+#printable_wheel_encoder()
 #wheel_encoder_template()
