@@ -78,7 +78,6 @@ def encoder_barrel():
     im.save('/tmp/barrel.png',dpi=(dpi,dpi))
     im.show()
     
-    
 encoder_barrel()
 #printable_wheel_encoder()
 #wheel_encoder_template()
