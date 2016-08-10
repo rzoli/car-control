@@ -53,15 +53,15 @@ def encoder_barrel():
     #Behavioral
     diameter=150#mm
     height=30#mm
-    pulse_per_rev=36
+    pulse_per_rev=18
     shifted=not False
     print_half=True
     #Robotcar
-    diameter=10#mm
-    height=10#mm
-    pulse_per_rev=10
-    shifted=False
-    print_half=False
+    #diameter=10#mm
+    #height=10#mm
+    #pulse_per_rev=10
+    #shifted=False
+    #print_half=False
     perimeter=int(numpy.pi*diameter*mm2pixel)
     if print_half:
         perimeter/=2
