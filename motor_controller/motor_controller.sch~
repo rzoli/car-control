@@ -758,7 +758,7 @@ device=4N25
 T 33100 47800 5 10 1 1 0 6 1
 refdes=U5
 T 31600 49300 5 10 0 0 0 0 1
-footprint=opb606a
+footprint=DIL 6 300
 }
 C 35900 49500 1 0 0 vcc-1.sym
 N 36100 49300 36100 49500 4
@@ -1032,7 +1032,7 @@ device=4N25
 T 34200 45100 5 10 1 1 0 6 1
 refdes=U6
 T 32700 46600 5 10 0 0 0 0 1
-footprint=opb606a
+footprint=DIL 6 300
 }
 C 34900 44100 1 0 0 BC817-1.sym
 {
