@@ -1,7 +1,7 @@
 (export (version D)
   (design
     (source /home/rz/mysoftware/robot-control/motor_controller_2/mc2.sch)
-    (date "Sam 03 Sep 2016 16:22:59 CEST")
+    (date "Sam 10 Sep 2016 20:20:49 CEST")
     (tool "Eeschema 4.0.2+dfsg1-stable")
     (sheet (number 1) (name /) (tstamps /)
       (title_block
@@ -59,7 +59,7 @@
       (tstamp 57C2B7E1))
     (comp (ref D10)
       (value SS24)
-      (footprint Diodes_SMD:DO-214AB_Handsoldering)
+      (footprint Diodes_SMD:DO-214BA)
       (libsource (lib device) (part D))
       (sheetpath (names /) (tstamps /))
       (tstamp 57C2D96D))
@@ -677,10 +677,10 @@
       (uri /usr/share/kicad/library/conn.lib))
     (library (logical regul)
       (uri /usr/share/kicad/library/regul.lib))
-    (library (logical atmel)
-      (uri /usr/share/kicad/library/atmel.lib))
     (library (logical opto)
       (uri /usr/share/kicad/library/opto.lib))
+    (library (logical atmel)
+      (uri /usr/share/kicad/library/atmel.lib))
     (library (logical rz)
       (uri /home/rz/mysoftware/robot-control/motor_controller_2/rz.lib)))
   (nets
