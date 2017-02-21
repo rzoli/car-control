@@ -1,0 +1,6 @@
+mc2-B.Cu.gbr  - Bottom rez
+mc2-B.Mask.gbr - Bottom lotsop
+mc2-Edge.Cuts.gbr - Panel szele
+mc2-F.Cu.gbr  - Top rez
+mc2-F.Mask.gbr - Top lotstop
+mc2.drl - furas
