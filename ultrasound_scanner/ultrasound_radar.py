@@ -1,3 +1,4 @@
+#TODO: save map as image, load image
 from PIL import Image
 import numpy,serial
 import Queue
@@ -37,7 +38,7 @@ class UltrasoundRadar(gui.VisexpmanMainWindow):
                     level=logging.DEBUG)
         self.setWindowTitle('Ultrasound Radar')
         icon_folder = os.path.join(os.path.split(os.path.dirname(__file__))[0], 'icons')
-        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'new', 'exit'], icon_folder = icon_folder)
+        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'new', 'scan', 'save', 'exit'], icon_folder = icon_folder)
         self.addToolBar(self.toolbar)
         self.console = gui.PythonConsole(self, selfw = self)
         self.console.setMinimumWidth(800)
@@ -95,7 +96,13 @@ class UltrasoundRadar(gui.VisexpmanMainWindow):
                     {'name': 'Connection', 'type': 'list', 'values': ['serial port', 'tcp/ip'], 'value': 'serial port'},
                     {'name': 'Timeout', 'type': 'float', 'value': 0.5, 'suffix': 's'},
                     ]},
-                
+                {'name': 'Ultrasound Radar', 'type': 'group', 'expanded' : True, 'children': [
+                    {'name': 'step', 'type': 'int', 'value': 5, 'suffix': ' degree'},
+                    {'name': 'tilt', 'type': 'int', 'value': 60, 'suffix': ' degree'},
+                    {'name': 'repetition', 'type': 'int', 'value': 2},
+                    {'name': 'wait', 'type': 'float', 'value': 0.5, 'suffix': ' s'},
+                    {'name': 'Filename', 'type': 'str', 'value': ''},
+                    ]},
                     
                     ]
         return pc
@@ -141,15 +148,27 @@ class UltrasoundRadar(gui.VisexpmanMainWindow):
     def tilt(self,angle):
         self.cmd('tilt,{0}'.format(angle))
         
-    def meas(self,rot=None):
+    def meas(self,rot=None,wait=0.5,rep=1):
         if rot!=None:
             self.rot(rot)
-            time.sleep(0.5)
-        res=self.cmd('meas')
-        distance=float(res.split(' ')[0])
-        if rot!=None:
-            self.map.append([rot,distance])
-            self.map2plot()
+            time.sleep(wait)
+        for i in range(rep):
+            res=self.cmd('meas')
+            distance=float(res.split(' ')[0])
+            if rot!=None:
+                self.map.append([rot,distance])
+                self.map2plot()
+            
+    def scan(self,step=10, tilt=60,wait=1.0,rep=1):
+        self.new_action()
+        self.tilt(tilt)
+        self.rot(0)
+        time.sleep(1)
+        for i in range(0,180+step,step):
+            self.tilt(tilt)
+            time.sleep(0.2)
+            self.meas(i,wait=wait,rep=rep)
+        self.rot(0)
     
     def map2plot(self):
         map=numpy.array(self.map)
@@ -158,9 +177,17 @@ class UltrasoundRadar(gui.VisexpmanMainWindow):
         plotparams=[{'pen': None,'symbol':'o', 'symbolSize':5, 'symbolBrush': (0,200,0,150)}]
         plotparams.append({'pen': None,'symbol':'d', 'symbolSize':12, 'symbolBrush': (200,0,0,150)})
         self.plot.update_curves(self.x,self.y,plotparams=plotparams)
-        self.plot.plot.setYRange(0, 100)
-        self.plot.plot.setXRange(-50, 50)
+        self.range_=1.5*map[:,1].mean()
+        self.plot.plot.setYRange(0, 2*self.range_)
+        self.plot.plot.setXRange(-self.range_, self.range_)
         
+    def save_action(self):
+        fn='/home/rz/mysoftware/data/map_{0}_{1}.npy'.format(self.setting_values['Filename'], int(time.time()))
+        numpy.save(fn,numpy.array([self.x, self.y]))
+        self.log('Map saved')
+    
+    def scan_action(self):
+        self.scan(step=self.setting_values['step'],wait=self.setting_values['wait'],tilt=self.setting_values['tilt'],rep=self.setting_values['repetition'])
         
     def log(self, msg, loglevel='info'):
         getattr(logging, loglevel)(str(msg))
