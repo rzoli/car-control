@@ -27,22 +27,24 @@ Board2HostInterface::Board2HostInterface(void)
     init_uart();
     sei();
     PORTB.DIRSET = 1<<GREEN_LED | 1 << RED_LED; 
-
     SET_GREEN_LED;
     SET_RED_LED;
     _delay_ms(1000);
     CLEAR_RED_LED;
     _delay_ms(1000);
     CLEAR_GREEN_LED;
+    *this<<"Started";
 
 }
 void Board2HostInterface::run(void)
 {   
-    int res;
+    static int res;
+    static char c[2];
     c[0]=getbyte();
     if (c[0]>0)
     {
         c[1]=0;
+        //putbyte(c[0]);
         put(c);
         res=parse();
         if (res==NO_ERROR)
@@ -50,7 +52,7 @@ void Board2HostInterface::run(void)
             dispatch_commands();
         }
     }
-    *this<<"12345";
+    //*this<<"12345";
     _delay_ms(10);
 }
 void Board2HostInterface::init_clock(void)
@@ -91,11 +93,11 @@ void Board2HostInterface::putbyte(char c)
 }
 char Board2HostInterface::getbyte(void)
 {
-	char res = 0U;    
+	char res = 0U;
     if (USART_RXBufferData_Available(&USART_data)) {
-	    res = USART_RXBuffer_GetByte(&USART_data);
+     res = USART_RXBuffer_GetByte(&USART_data);
 	}
-	return (res);
+	return res;
 }
 
 Board2HostInterface& Board2HostInterface::operator <<(char* pBuffer)
@@ -114,7 +116,53 @@ Board2HostInterface& Board2HostInterface::operator <<(unsigned int uiVal)
 	*this << aIntBuff;
 	return *this;
 }
+
 void Board2HostInterface::dispatch_commands(void)
 {
+//        *this<<"===="<<parameter_buffer<<"...."<<par[0]<<"...."<<debug<<"\r\n";
+//        *this<<atoi(parameter_buffer)<<"-----\r\n";
+       /* *this<<"debug0 "<<debug[0]<<"\r\n";
+        *this<<"debug1 "<<debug[1]<<"\r\n";
+        *this<<"debug2 "<<debug[2]<<"\r\n";
+        *this<<"debug3 "<<debug[3]<<"\r\n";
+        *this<<"debug4 "<<debug[4]<<"\r\n";
+        *this<<"debug5 "<<debug[5]<<"\r\n";
+*this<<"buffer "<<buffer<<"\r\n";*/
+        if (strcmp(command, "ping") == 0)
+        {
+                *this<<"pong\r\n";
+        }
+        else if ((strcmp(command, "green") == 0)&&(nparams==1))
+        {
+                if (par[0]==0)
+                {
+                        CLEAR_GREEN_LED;
+                }
+                else
+                {
+                        SET_GREEN_LED;
+                }
+                *this<<"green led set to "<<par[0]<<"\r\n";
+        }
+        else if ((strcmp(command, "red") == 0)&&(nparams==1))
+        {
+                if (par[0]==0)
+                {
+                        CLEAR_RED_LED;
+                }
+                else
+                {
+                        SET_RED_LED;
+                }
+                *this<<"red led set to "<<par[0]<<"\r\n";
+        }
+        else if ((strcmp(command, "set_pwm") == 0)&&(nparams==4))
+        {
+                *this<<"pwm set to "<<par[0]<<","<<par[1]<<","<<par[2]<<","<<par[3]<<"\r\n";
+        }
+        else
+        {
+          *this<<"unknown command\r\n";
+        }
 }
 

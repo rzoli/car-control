@@ -12,7 +12,6 @@
   #include "config.h"
 #endif
 
-
 Comm::Comm(void)
 {
     memset(buffer,0,COMM_BUFFER_SIZE);
@@ -20,9 +19,9 @@ Comm::Comm(void)
 
 int Comm::parse(void)
 {   
-    uint8_t eoc;//end of command index
-    uint8_t sop[MAX_PARAMS]; //start of parameter indexes
-    uint8_t i,j,param_counter,sp,ep,n;
+    int eoc;//end of command index
+    int sop[MAX_PARAMS]; //start of parameter indexes
+    int i,j,param_counter,sp,ep,n;
     bool eoc_found=false;
     bool parameter_error=false;
     /*
@@ -85,7 +84,7 @@ int Comm::parse(void)
             return WRONG_PARAMETER;
         }
         parameter_buffer[n]=0;
-        par[i]=atoi(parameter_buffer);
+        par[i]=(int)(atoi(parameter_buffer));
         #if DEBUG_PARSE
             cout<<sp<<" "<<ep<<" "<<n<<" "<<parameter_buffer<<endl;
         #endif
@@ -97,6 +96,7 @@ int Comm::parse(void)
     flush_command(eoc);
     if (n<COMMAND_NAME_SIZE)
         command[n]=0;
+            debug[4]=par[0];
     #if DEBUG_PARSE
         cout<<endl<<"--debug--"<<endl<<command<<" "<< nparams<<endl<<buffer<<endl;
         for(i=0;i<nparams;i++)
@@ -107,15 +107,14 @@ int Comm::parse(void)
     return NO_ERROR;
 }
 
-void Comm::flush_command(uint8_t index)
+void Comm::flush_command(int index)
 {
-    uint8_t i;
+    int i;
     for (i=0;i<COMM_BUFFER_SIZE-(index+2);i++)
     {
         buffer[i]=buffer[i+index+2];
     }
-    buffer[i+index+2]=0;
-
+    buffer[i+index+3]=0;//Offset should be 2 but works with 3
 }
 
 void Comm::put(char* c)

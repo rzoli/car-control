@@ -26,5 +26,4 @@ class Board2HostInterface:public Comm {
         void init_adc(void);
         void init_pwm_control(void);
         void init_clock(void);
-        char c[2];
 };

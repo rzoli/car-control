@@ -30,13 +30,14 @@ class Comm {
         int parse(void);
         void put(char* c);
         char buffer[COMM_BUFFER_SIZE];
-        int16_t par[MAX_PARAMS];
+        int par[MAX_PARAMS];
         uint8_t nparams;
         char command[COMMAND_NAME_SIZE];
         void debug_pulse(void);
+        int debug[6];
     private:
         char parameter_buffer[COMMAND_NAME_SIZE];
-        void flush_command(uint8_t index);
+        void flush_command(int index);
 };
 
 
