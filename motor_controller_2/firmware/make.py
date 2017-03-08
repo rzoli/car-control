@@ -1,5 +1,5 @@
 import sys,os,subprocess
-source_files = ['main.cpp', 'clksys_driver.cpp',  'usart_driver.cpp', 'comm.cpp', 'board2host.cpp']
+source_files = ['main.cpp', 'clksys_driver.cpp',  'usart_driver.cpp', 'comm.cpp', 'board2host.cpp', 'adc_driver.cpp']
 output_file = 'fw'
 mcu = 'atxmega32a4'
 optimization_level = 's'
