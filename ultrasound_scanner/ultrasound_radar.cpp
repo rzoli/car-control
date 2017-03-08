@@ -79,7 +79,7 @@ void UltrasoundRadar::measure(void)
 void UltrasoundRadar::tilt(uint8_t angle)
 {
  #if (PLATFORM==ARDUINO)
-  Servo servo;
+  static Servo servo;
   servo.attach(VERTICAL);
   servo.write(angle);
   delay(SERVO_MOVE_TIME);  
@@ -91,7 +91,7 @@ void UltrasoundRadar::tilt(uint8_t angle)
 void UltrasoundRadar::rotate(uint8_t angle)
 {
  #if (PLATFORM==ARDUINO)
-  Servo servo; 
+  static Servo servo; 
   servo.attach(HORIZONTAL);
   servo.write(angle);
   delay(SERVO_MOVE_TIME);
