@@ -1,6 +1,6 @@
 #TODO: save map as image, load image
 from PIL import Image
-import numpy,serial
+import numpy,serial,socket
 import Queue
 import os
 import time
@@ -93,14 +93,20 @@ class UltrasoundRadar(gui.VisexpmanMainWindow):
         pc =  [                
                 {'name': 'Microcontroller', 'type': 'group', 'expanded' : True, 'children': [
                     {'name': 'Serial port', 'type': 'str', 'value': '/dev/ttyACM0'},
+                    {'name': 'IP', 'type': 'str', 'value': 'localhost'},
+                    {'name': 'port', 'type': 'int', 'value': 1000},
                     {'name': 'Connection', 'type': 'list', 'values': ['serial port', 'tcp/ip'], 'value': 'serial port'},
                     {'name': 'Timeout', 'type': 'float', 'value': 0.5, 'suffix': 's'},
                     ]},
                 {'name': 'Ultrasound Radar', 'type': 'group', 'expanded' : True, 'children': [
                     {'name': 'step', 'type': 'int', 'value': 5, 'suffix': ' degree'},
                     {'name': 'tilt', 'type': 'int', 'value': 60, 'suffix': ' degree'},
-                    {'name': 'repetition', 'type': 'int', 'value': 2},
-                    {'name': 'wait', 'type': 'float', 'value': 0.5, 'suffix': ' s'},
+                    {'name': 'tilt_range', 'type': 'int', 'value': 2, 'suffix': ' degree'},
+                    {'name': 'tilt_points', 'type': 'int', 'value': 3, 'suffix': ' degree'},
+                    {'name': 'start', 'type': 'int', 'value': 45, 'suffix': ' degree'},
+                    {'name': 'end', 'type': 'int', 'value': 135, 'suffix': ' degree'},
+                    {'name': 'repetition', 'type': 'int', 'value': 1},
+                    {'name': 'wait', 'type': 'float', 'value': 0.1, 'suffix': ' s'},
                     {'name': 'Filename', 'type': 'str', 'value': ''},
                     ]},
                     
@@ -112,7 +118,13 @@ class UltrasoundRadar(gui.VisexpmanMainWindow):
         self.setting_values = new_values
         
     def connect_action(self):
-        self.serial=serial.Serial(self.setting_values['Serial port'],115200,timeout=self.setting_values['Timeout'])
+        if self.setting_values['Connection']=='serial port':
+            self.serial=serial.Serial(self.setting_values['Serial port'],115200,timeout=self.setting_values['Timeout'])
+        elif self.setting_values['Connection']=='tcp/ip':
+            self.socket=socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            server_address = (self.setting_values['IP'], self.setting_values['port'])
+            self.socket.connect(server_address)
+            self.socket.settimeout(self.setting_values['Timeout'])
         self.log('Connected')
         
     def echo_action(self):
@@ -125,6 +137,8 @@ class UltrasoundRadar(gui.VisexpmanMainWindow):
     def exit_action(self):
         if hasattr(self, 'serial'):
             self.serial.close()
+        elif hasattr(self, 'sock'):
+            self.socket.close()
         self.log('Exit')
         self.close()
         
@@ -148,10 +162,10 @@ class UltrasoundRadar(gui.VisexpmanMainWindow):
     def tilt(self,angle):
         self.cmd('tilt,{0}'.format(angle))
         
-    def meas(self,rot=None,wait=0.5,rep=1):
-        if rot!=None:
-            self.rot(rot)
-            time.sleep(wait)
+    def meas(self,rot=None,rep=1):
+#        if rot!=None:
+#            self.rot(rot)
+#            time.sleep(wait)
         for i in range(rep):
             res=self.cmd('meas')
             distance=float(res.split(' ')[0])
@@ -159,16 +173,21 @@ class UltrasoundRadar(gui.VisexpmanMainWindow):
                 self.map.append([rot,distance])
                 self.map2plot()
             
-    def scan(self,step=10, tilt=60,wait=1.0,rep=1):
+    def scan(self,step=10, tilt=60,wait=1.0,rep=1, tilt_range=[]):
+        ti=self.setting_values['tilt_range']
+        nti=self.setting_values['tilt_points']
         self.new_action()
         self.tilt(tilt)
-        self.rot(0)
+        self.rot(self.setting_values['start'])
         time.sleep(1)
-        for i in range(0,180+step,step):
-            self.tilt(tilt)
-            time.sleep(0.2)
-            self.meas(i,wait=wait,rep=rep)
-        self.rot(0)
+        for i in range(self.setting_values['start'],self.setting_values['end']+step,step):
+            self.rot(i)
+            for j in numpy.linspace(-ti, ti, nti):
+                self.tilt(tilt+int(j))
+                time.sleep(wait)
+                self.meas(rep=rep,rot=i)
+        self.rot(90)
+        self.rot(self.setting_values['start'])
     
     def map2plot(self):
         map=numpy.array(self.map)
