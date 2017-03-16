@@ -38,6 +38,7 @@ class Comm {
     private:
         char parameter_buffer[COMMAND_NAME_SIZE];
         void flush_command(int index);
+        int par0_buffer;
 };
 
 

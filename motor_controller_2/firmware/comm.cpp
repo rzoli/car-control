@@ -89,11 +89,13 @@ int Comm::parse(void)
             cout<<sp<<" "<<ep<<" "<<n<<" "<<parameter_buffer<<endl;
         #endif
     }
+    par0_buffer=par[0];
     nparams=param_counter;
     n=(param_counter>0) ? sop[0] : (eoc-1);
     memcpy(command,buffer,n);
     //Remove parsed command from buffer
-    flush_command(eoc);
+    flush_command(eoc);//for unknown reason par[0] is casted to 8 bit
+    par[0]=par0_buffer;
     if (n<COMMAND_NAME_SIZE)
         command[n]=0;
             debug[4]=par[0];
@@ -114,7 +116,7 @@ void Comm::flush_command(int index)
     {
         buffer[i]=buffer[i+index+2];
     }
-    buffer[i+index+3]=0;//Offset should be 2 but works with 3
+    buffer[i+index+2]=0;//Offset should be 2 but works with 3
 }
 
 void Comm::put(char* c)

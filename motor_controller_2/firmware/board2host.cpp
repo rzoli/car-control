@@ -9,7 +9,7 @@
 #include "adc_driver.h"
 #include "board2host.h"
 
-#define PW2REG(pulsewidth) (int)(pulsewidth*PWM_PERIOD_REGISTER_VALUE/1000)
+#define PW2REG(pulsewidth) (uint16_t)((uint32_t)(pulsewidth*PWM_PERIOD_REGISTER_VALUE)/1000)
 
 USART_data_t USART_data;
 
@@ -113,12 +113,22 @@ uint32_t Board2HostInterface::micros(void)
 }
 void Board2HostInterface::init_adc(void)
 {
-    PORTA.DIRSET &= ~(1<<7);//porta pin 7
+    PORTA.DIRSET &= ~(1<<7|1);//porta pin 7
     ADC_CalibrationValues_Load(&ADCA);
-    ADCA.REFCTRL=1<<1;//Bandgap is enabled for 1V vref
-    ADCA.PRESCALER=1;//Clock prescaler is at div8 -> 250 kHz kHz adc clock ~28 us acquisition time
-    ADCA.CH0.CTRL|=1;//single ended selected
-    ADCA.CH0.MUXCTRL=7<<3;//adc7 pin
+    ADCA.PRESCALER=3;//Clock prescaler is at div32 -> 62 kHz kHz adc clock
+    if (1)
+    {
+        ADCA.REFCTRL=1<<1;//Bandgap is enabled for 1V vref
+        ADCA.CH0.CTRL|=1;//single ended selected
+        ADCA.CH0.MUXCTRL=7<<3;//adc7 pin
+    }
+    else
+    {
+        ADCA.CTRLB=1<<4;//signed mode selected
+        ADCA.REFCTRL=1<<4|2;//vcc/1.6V
+        ADCA.CH0.CTRL|=2;//diff selected
+        ADCA.CH0.MUXCTRL=7<<3;//adc7 pin, adc0 is for negative input
+    }
     ADCA.CTRLA|=1;//enable adc
     _delay_ms(10);//wait till adc clock settles
 
@@ -170,7 +180,7 @@ Board2HostInterface& Board2HostInterface::operator <<(char* pBuffer)
 Board2HostInterface& Board2HostInterface::operator <<(uint32_t uiVal)
 {
 	char aIntBuff[10];
-	ultoa(uiVal, aIntBuff,10);
+	ultoa((uint32_t)uiVal, aIntBuff,10);
 	*this << aIntBuff;
 	return *this;
 }
@@ -232,7 +242,7 @@ void Board2HostInterface::dispatch_commands(void)
         }
         else if ((strcmp(command, "set_pwm") == 0)&&(nparams==4))
         {
-                set_pwm(par[0], par[1], par[2], par[3]);
+                set_pwm((uint16_t)par[0], (uint16_t)par[1], (uint16_t)par[2], (uint16_t)par[3]);
                 *this<<"pwm set to "<<par[0]<<","<<par[1]<<","<<par[2]<<","<<par[3]<<"\r\n";
         }
         else if ((strcmp(command, "stop") == 0)&&(nparams==0))
@@ -250,7 +260,7 @@ void Board2HostInterface::dispatch_commands(void)
         {
             *this<<read_battery_voltage()<<"\r\n";
         }
-        else if ((strcmp(command, "meas_sample_time") == 0)&&(nparams==1))
+        else if ((strcmp(command, "meas_tsample") == 0)&&(nparams==1))
         {
             t1=micros();
             for(i=0;i<par[0];i++)
