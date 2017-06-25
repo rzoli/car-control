@@ -1,5 +1,5 @@
 from PIL import Image
-import numpy
+import numpy,scipy
 import Queue
 import os
 import time
@@ -11,8 +11,15 @@ import PyQt4.Qt as Qt
 import PyQt4.QtGui as QtGui
 import PyQt4.QtCore as QtCore
 from visexpman.engine.generic import gui, fileop,utils
-from motor_drive.firmware_test import MotorControl,parse_firmware_config
+from motor_drive.firmware_test import parse_firmware_config
 import multiprocessing
+
+ADC_CALIB=numpy.array([
+    [6, 	1833, 	0.403, 	0.284],
+    [7, 	2126, 	0.473, 	0.285],
+    [8, 	2421, 	0.544, 	0.285],
+    [9, 	2704, 	0.615, 	0.286],
+    [10, 	3005, 	0.686, 	0.286]])
 
 def excepthook(excType, excValue, tracebackobj):
     msg='\n'.join(traceback.format_tb(tracebackobj))+str(excType.__name__)+': '+str(excValue)
@@ -82,8 +89,17 @@ class RemoteControl(gui.VisexpmanMainWindow):
         self.exposure=10
         self.delay=100
         
+        self.lut=scipy.interpolate.interp1d(ADC_CALIB[:,1], ADC_CALIB[:,0],bounds_error=False, fill_value='extrapolate')
+        
         if QtCore.QCoreApplication.instance() is not None:
             QtCore.QCoreApplication.instance().exec_()
+            
+    def cmd(self,cmd, pars=[]):
+        self.s.write(cmd)
+        if len(pars)>0:
+                self.s.write(',{0}'.format(','.join(map(str,pars))))
+        self.s.write('\r\n')
+        return self.s.readline()
             
     def get_image(self):
         if not self.imageq.empty():
@@ -104,18 +120,10 @@ class RemoteControl(gui.VisexpmanMainWindow):
             
     def _get_params_config(self):
         pc =  [
-                {'name': 'Motor Mode', 'type': 'list', 'values': ['voltage', 'pwm', 'wheels']},
                 {'name': 'Microcontroller', 'type': 'group', 'expanded' : True, 'children': [
                     {'name': 'Serial port', 'type': 'str', 'value': '/dev/ttyUSB0'},
                     {'name': 'Connection', 'type': 'list', 'values': ['serial port', 'tcp/ip'], 'value': 'serial port'},
                     {'name': 'Timeout', 'type': 'float', 'value': 0.5, 'suffix': 's'},
-                    ]},
-                {'name': 'Vehicle Control', 'type': 'group', 'expanded' : True, 'children': [
-                    {'name': 'Motor1 voltage', 'type': 'float', 'value': 0.0, 'suffix': '%'},
-                    {'name': 'Motor2 voltage', 'type': 'float', 'value': 0.0, 'suffix': '%'},
-                    {'name': 'Wheel voltage', 'type': 'float', 'value': 0.0, 'suffix': '%'},
-                    {'name': 'Wheels voltage difference', 'type': 'float', 'value': 0.0, 'suffix': '%'},
-                    {'name': 'Movement time', 'type': 'float', 'value': 0.0, 'suffix': 's'},
                     ]},
                 {'name': 'Camera', 'type': 'group', 'expanded' : True, 'children': [
                     {'name': 'N frames', 'type': 'int', 'value': 100},
@@ -128,8 +136,6 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     
                     ]
         pc[1]['children'].extend([{'name': '{0}'.format(l), 'type': 'bool', 'value': False} for l in [k for k in parse_firmware_config().keys() if 'LED' in k]])
-        pwm_channels = ['PWM {0}'.format(pwmc) for pwmc in ['PORTE0', 'PORTE1', 'PORTE2', 'PORTE3']]
-        pc[1]['children'].extend([{'name': p, 'type': 'float', 'value': 0.0, 'suffix': '%'} for p in pwm_channels])
         return pc
         
     def settings_changed(self):
@@ -138,33 +144,41 @@ class RemoteControl(gui.VisexpmanMainWindow):
             #Check if LED status was changed
             for pn in [k for k in parse_firmware_config().keys() if 'LED' in k]:
                 state=new_values[pn]
-                if self.setting_values[pn]!=state and hasattr(self,'mc'):
-                    self.mc.set_led(pn[:-4],state)
-            #Check if PWM status was changed
-            if self.setting_values['Motor Mode']=='pwm':
-                for pn in [k for k in self.setting_values.keys() if 'PWM' in k]:
-                    pwm=new_values[pn]
-                    if self.setting_values[pn]!=pwm and hasattr(self,'mc'):
-                        self.mc.set_pwm(int(pn[-1]),int(pwm*10))
+                if self.setting_values[pn]!=state:
+                    self.cmd(pn[:-4].lower(),[int(state)])
         self.setting_values = new_values
         
     def connect_action(self):
         if self.setting_values['Connection'] == 'serial port':
-            if hasattr(self,'mc'):
+            if hasattr(self,'s'):
                 self.log('Already open')
                 return
             import serial
             self.s=serial.Serial(self.setting_values['Serial port'], timeout=self.setting_values['Timeout'], baudrate=parse_firmware_config()['BAUD'])
-            self.mc=MotorControl(self.s)
             self.log('Connected')
-
         
     def echo_action(self):
-        if hasattr(self, 'mc'):
-            self.log(self.mc.echo(1))
+        if hasattr(self, 's'):
+            self.log(self.cmd('ping'))
+            
+    def set_pwm(self, values):
+        return self.cmd('set_pwm', values)
+        
+    def set_motor(self,v1,v2):
+        values=[]
+        if v1<0:
+            values.extend([1000, 1000+int(v1*10)])
+        else:
+            values.extend([1000-int(v1*10),1000])
+        if v2<0:
+            values.extend([1000+int(v2*10),1000])
+        else:
+            values.extend([1000, 1000-int(v2*10)])
+        self.log(self.cmd('set_pwm', values))
         
     def set_motor_action(self):
-        if hasattr(self, 'mc'):
+        if hasattr(self, 's'):
+            return
             if self.setting_values['Motor Mode']=='wheels':
                 new_values=self.settings.get_parameter_tree(True)
                 pn1='Wheel voltage'
@@ -180,12 +194,13 @@ class RemoteControl(gui.VisexpmanMainWindow):
                 self.mc.set_motors(int(self.setting_values['Motor1 voltage'])*10,int(self.setting_values['Motor2 voltage'])*10)
                 
     def read_adc_action(self):
-        if hasattr(self, 'mc'):
-            self.mc.read_adc()
+        if hasattr(self, 's'):
+            raw_adc=self.cmd('read_vbatt')
+            self.log('battery voltage is {0} V'.format(self.lut(raw_adc)))
             
     def stop_action(self):
-        if hasattr(self, 'mc'):
-            self.mc.stop()
+        if hasattr(self, 's'):
+            self.log(self.cmd('stop'))
             
     def move(self,direction):
         if hasattr(self, 'mc'):

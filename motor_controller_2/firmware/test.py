@@ -67,8 +67,12 @@ class TestFirmware(unittest.TestCase):
             print 'sample time is {0} us'.format(tsamplen/n)
 
         def test_04_set_pwm(self):
-            print self.cmd('set_pwm', [990,700,500,50])
-            #print self.cmd('stop')
+            v=750
+            print self.cmd('set_pwm', [1000,v,v,1000])
+            time.sleep(4)
+            print self.cmd('set_pwm', [v,1000,1000,v])
+            time.sleep(4)
+            print self.cmd('stop')
 
 if __name__ == "__main__":
     unittest.main()
