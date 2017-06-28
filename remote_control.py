@@ -125,6 +125,10 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     {'name': 'Connection', 'type': 'list', 'values': ['serial port', 'tcp/ip'], 'value': 'serial port'},
                     {'name': 'Timeout', 'type': 'float', 'value': 0.5, 'suffix': 's'},
                     ]},
+                {'name': 'Vehicle', 'type': 'group', 'expanded' : True, 'children': [
+                    {'name': 'Default Motor Voltage', 'type': 'int', 'value': 30},
+                    {'name': 'Movement Duration', 'type': 'float', 'value': 0.5},
+                    ]},
                 {'name': 'Camera', 'type': 'group', 'expanded' : True, 'children': [
                     {'name': 'N frames', 'type': 'int', 'value': 100},
                     {'name': 'Width', 'type': 'int', 'value': 320},
@@ -135,7 +139,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     ]},
                     
                     ]
-        pc[1]['children'].extend([{'name': '{0}'.format(l), 'type': 'bool', 'value': False} for l in [k for k in parse_firmware_config().keys() if 'LED' in k]])
+        pc[0]['children'].extend([{'name': '{0}'.format(l), 'type': 'bool', 'value': False} for l in [k for k in parse_firmware_config().keys() if 'LED' in k]])
         return pc
         
     def settings_changed(self):
@@ -165,6 +169,8 @@ class RemoteControl(gui.VisexpmanMainWindow):
         return self.cmd('set_pwm', values)
         
     def set_motor(self,v1,v2):
+        if abs(v1)==100 or abs(v2)==100:
+            raise RuntimeError('100 % voltage is not yet supported')
         values=[]
         if v1<0:
             values.extend([1000, 1000+int(v1*10)])
@@ -203,22 +209,22 @@ class RemoteControl(gui.VisexpmanMainWindow):
             self.log(self.cmd('stop'))
             
     def move(self,direction):
-        if hasattr(self, 'mc'):
-            p=self.settings.get_parameter_tree(True)
-            logging.info('Motion for {0} s'.format(p['Movement time']))
-            d=1 if direction else -1
-            self.mc.set_motors(d*p['Wheel voltage']*10,d*p['Wheel voltage']*10)
-            time.sleep(p['Movement time'])
-            self.mc.stop()
+        p=self.settings.get_parameter_tree(True)
+        v=p['Default Motor Voltage']
+        t=p['Movement Duration']
+        d=1 if direction else -1
+        self.set_motor(d*v,d*v)
+        time.sleep(t)
+        self.cmd('stop')
         
     def turn(self,direction):
-        if hasattr(self, 'mc'):
-            p=self.settings.get_parameter_tree(True)
-            logging.info('Turning for {0} s'.format(p['Movement time']))
-            d=1 if direction else -1
-            self.mc.set_motors(10*d*p['Wheels voltage difference'],10*-d*p['Wheels voltage difference'])
-            time.sleep(p['Movement time'])
-            self.mc.stop()
+        p=self.settings.get_parameter_tree(True)
+        v=p['Default Motor Voltage']
+        t=p['Movement Duration']
+        d=1 if direction else -1
+        self.set_motor(d*v,-d*v)
+        time.sleep(t)
+        self.cmd('stop')
             
     def backward_action(self):
         self.move(True)
