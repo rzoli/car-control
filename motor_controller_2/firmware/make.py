@@ -3,7 +3,7 @@ source_files = ['main.cpp', 'clksys_driver.cpp',  'usart_driver.cpp', 'comm.cpp'
 output_file = 'fw'
 mcu = 'atxmega32a4'
 optimization_level = 's'
-firmware_folder = os.path.dirname(__file__)
+firmware_folder = os.getcwd()#os.path.dirname(__file__)
 
 def clean():
     [os.remove(f) for f in os.listdir(os.getcwd()) if '.hex' in f or '.map' in f or '.elf' in f]

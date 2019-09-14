@@ -23,6 +23,7 @@ ISR(USARTC0_DRE_vect)
     USART_DataRegEmpty(&USART_data);
 }
 
+
 Board2HostInterface::Board2HostInterface(void)
 {
     init_clock();
@@ -30,6 +31,7 @@ Board2HostInterface::Board2HostInterface(void)
     init_microsecond_timer();
     init_adc();
     init_pwm();
+    init_external_interrupts();
     sei();
     PORTB.DIRSET = 1<<GREEN_LED | 1 << RED_LED; 
     SET_GREEN_LED;
@@ -155,6 +157,29 @@ void Board2HostInterface::stop(void)
     TCE0.CCC = 0;
     TCE0.CCD = 0;
 }
+void Board2HostInterface::init_external_interrupts(void)
+{
+    PORTD.INT0MASK|=1<<RPM_RIGHT_PIN|1<<RPM_LEFT_PIN;
+    //By default both edges are triggered
+    PORTD.PIN0CTRL|=0x1;//rising edge, 0x2 would be falling edge, 0x0: both edges
+    PORTD.PIN1CTRL|=0x1;
+    right_wheel_counter=0;
+    left_wheel_counter=0;
+    left_wheel_timestamp=0;
+    right_wheel_timestamp=0;
+    left_wheel_timestamp_prev=0;
+    right_wheel_timestamp_prev=0;
+}
+void Board2HostInterface::external_interrupt_isr(void)
+{
+    right_wheel_counter++;
+    left_wheel_counter++;
+    left_wheel_timestamp_prev=left_wheel_timestamp;
+    left_wheel_timestamp=micros();
+    right_wheel_timestamp_prev=right_wheel_timestamp;
+    left_wheel_timestamp=micros();
+
+}
 void Board2HostInterface::putbyte(char c)
 {
     USART_TXBuffer_PutByte(&USART_data, c);
@@ -270,7 +295,12 @@ void Board2HostInterface::dispatch_commands(void)
             t2=micros();
             *this<<t2-t1<<"\r\n";
         }
-
+        else if ((strcmp(command, "read_steps") == 0)&&(nparams==0))
+	{
+	    *this<<right_wheel_counter<<","<<left_wheel_counter <<"\r\n";
+	    *this<<right_wheel_timestamp_prev<<","<<left_wheel_timestamp_prev <<"\r\n";
+	    *this<<right_wheel_timestamp<<","<<left_wheel_timestamp <<"\r\n";
+	}
         else
         {
           *this<<"unknown command\r\n";

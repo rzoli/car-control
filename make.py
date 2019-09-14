@@ -6,7 +6,7 @@ source_files = ['main.cpp', 'clksys_driver.cpp',  'usart_driver.cpp',  'command_
 output_file = 'fw'
 mcu = 'atxmega32a4'
 optimization_level = 's'
-firmware_folder = 'motor_drive'
+firmware_folder = 'motor_controller_2/firmware'
 
 def clean():
     [os.remove(f) for f in os.listdir(os.getcwd()) if '.hex' in f or '.map' in f or '.elf' in f]
