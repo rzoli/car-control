@@ -32,8 +32,12 @@ Board2HostInterface::Board2HostInterface(void)
     init_adc();
     init_pwm();
     init_external_interrupts();
+//PORTD.DIRCLR|=1<<3;
+
+
     sei();
-    PORTB.DIRSET = 1<<GREEN_LED | 1 << RED_LED; 
+    PORTB.DIRSET = 1<<GREEN_LED | 1 << RED_LED | 1<< IR_RIGHT | 1<<IR_LEFT; 
+    PORTB.OUTSET = 1<<IR_RIGHT|1<<IR_LEFT;
     SET_GREEN_LED;
     SET_RED_LED;
     _delay_ms(1000);
@@ -60,7 +64,8 @@ void Board2HostInterface::run(void)
         }
     }
     //*this<<"12345";
-    _delay_ms(10);
+    /**this<< PORTD.IN  <<"\r\n";
+    _delay_ms(1000);*/
 }
 void Board2HostInterface::init_clock(void)
 {
@@ -70,7 +75,7 @@ void Board2HostInterface::init_clock(void)
     CLKSYS_Main_ClockSource_Select( CLK_SCLKSEL_RC2M_gc );//2 MHz selected
 }
 void Board2HostInterface::reset(void)
-{
+{    
     //Enable watchdog and wait...
     CCP=0xD8;
     WDT.CTRL=3;//period is 8 ms
@@ -159,10 +164,13 @@ void Board2HostInterface::stop(void)
 }
 void Board2HostInterface::init_external_interrupts(void)
 {
-    PORTD.INT0MASK|=1<<RPM_RIGHT_PIN|1<<RPM_LEFT_PIN;
+    PORTD.DIRCLR|=1<<RPM_RIGHT_PIN|1<<RPM_LEFT_PIN;
+    PORTD.INT0MASK|=1<<RPM_RIGHT_PIN;//|1<<RPM_LEFT_PIN;
     //By default both edges are triggered
-    PORTD.PIN0CTRL|=0x1;//rising edge, 0x2 would be falling edge, 0x0: both edges
-    PORTD.PIN1CTRL|=0x1;
+    //PORTD.PIN0CTRL|=0x0;//0x1rising edge, 0x2 would be falling edge, 0x0: both edges
+    PORTD.PIN1CTRL|=0x1;//right side (pcb top)
+    PORTD.INTCTRL|=0x2; //int0 enabled
+    PMIC.CTRL |= PMIC_MEDLVLEN_bm;
     right_wheel_counter=0;
     left_wheel_counter=0;
     left_wheel_timestamp=0;
@@ -172,12 +180,14 @@ void Board2HostInterface::init_external_interrupts(void)
 }
 void Board2HostInterface::external_interrupt_isr(void)
 {
+//    *this<< "ISR "<<right_wheel_counter++<<"\r\n";
     right_wheel_counter++;
-    left_wheel_counter++;
+    /*left_wheel_counter++;
     left_wheel_timestamp_prev=left_wheel_timestamp;
-    left_wheel_timestamp=micros();
+    left_wheel_timestamp=micros();*/
     right_wheel_timestamp_prev=right_wheel_timestamp;
-    left_wheel_timestamp=micros();
+    right_wheel_timestamp=micros();
+
 
 }
 void Board2HostInterface::putbyte(char c)
@@ -297,9 +307,9 @@ void Board2HostInterface::dispatch_commands(void)
         }
         else if ((strcmp(command, "read_steps") == 0)&&(nparams==0))
 	{
-	    *this<<right_wheel_counter<<","<<left_wheel_counter <<"\r\n";
-	    *this<<right_wheel_timestamp_prev<<","<<left_wheel_timestamp_prev <<"\r\n";
-	    *this<<right_wheel_timestamp<<","<<left_wheel_timestamp <<"\r\n";
+	    *this<<right_wheel_counter<<","<<right_wheel_timestamp <<"\r\n";
+	    /**this<<right_wheel_timestamp_prev<<","<<left_wheel_timestamp_prev <<"\r\n";
+	    *this<<right_wheel_timestamp<<","<<left_wheel_timestamp <<"\r\n";*/
 	}
         else
         {

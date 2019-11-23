@@ -2,6 +2,8 @@
 #define BAUD 115200
 #define RED_LED 0
 #define GREEN_LED 1
+#define IR_RIGHT 2
+#define IR_LEFT 3
 #define SET_GREEN_LED  PORTB.OUTSET = 1<<GREEN_LED
 #define CLEAR_GREEN_LED  PORTB.OUTCLR = 1<<GREEN_LED
 #define SET_RED_LED  PORTB.OUTSET = 1<<RED_LED
@@ -13,3 +15,4 @@
 
 #define RPM_LEFT_PIN 0
 #define RPM_RIGHT_PIN 1
+
