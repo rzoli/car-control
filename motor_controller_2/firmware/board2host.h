@@ -28,6 +28,8 @@ class Board2HostInterface:public Comm {
         void init_pwm(void);
         void init_clock(void);
         void init_microsecond_timer(void);
+        void init_input_capture(void);
+	uint16_t measure_pulse_width(void);
         uint32_t micros(void);
         void init_external_interrupts(void);
         uint32_t left_wheel_counter;
@@ -36,5 +38,6 @@ class Board2HostInterface:public Comm {
         uint32_t right_wheel_timestamp;
         uint32_t left_wheel_timestamp_prev;
         uint32_t right_wheel_timestamp_prev;
+	uint32_t goto_steps;
 
 };

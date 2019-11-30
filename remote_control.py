@@ -45,14 +45,14 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     level=logging.DEBUG)
         self.setWindowTitle('Robot GUI')
         icon_folder = os.path.join(os.path.split(__file__)[0], 'icons')
-        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'set_motor', 'backward', 'forward', 'turn_left', 'turn_right', 'run_maneuver', 'read_adc', 'start_video', 'stop', 'exit'], icon_folder = icon_folder)
+        self.toolbar = gui.ToolBar(self, ['connect', 'echo', 'set_motor', 'read_steps', 'backward', 'forward', 'turn_left', 'turn_right', 'run_maneuver', 'read_adc', 'start_video', 'stop', 'exit'], icon_folder = icon_folder)
         self.addToolBar(self.toolbar)
         self.console = gui.PythonConsole(self, selfw = self)
-        self.console.setMinimumWidth(800)
+        self.console.setMinimumWidth(700)
         self.console.setMinimumHeight(200)
         self._add_dockable_widget('Console', QtCore.Qt.BottomDockWidgetArea, QtCore.Qt.BottomDockWidgetArea, self.console)
         self.logw = gui.TextOut(self)
-        self.logw.setMinimumWidth(300)
+        self.logw.setMinimumWidth(400)
         self._add_dockable_widget('Log', QtCore.Qt.BottomDockWidgetArea, QtCore.Qt.BottomDockWidgetArea, self.logw)
         self.settings = gui.ParameterTable(self, self._get_params_config())
         self.settings.setMinimumWidth(300)
@@ -61,7 +61,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
         self._add_dockable_widget('Settings', QtCore.Qt.RightDockWidgetArea, QtCore.Qt.RightDockWidgetArea, self.settings)
         self.image=gui.Image(self)
         self.image.setFixedWidth(500)
-        self.image.setFixedHeight(500)
+        self.image.setMaximumHeight(500)
         self.setCentralWidget(self.image)
         
         self.show()
@@ -126,10 +126,11 @@ class RemoteControl(gui.VisexpmanMainWindow):
                     {'name': 'Timeout', 'type': 'float', 'value': 0.5, 'suffix': 's'},
                     ]},
                 {'name': 'Vehicle', 'type': 'group', 'expanded' : True, 'children': [
-                    {'name': 'Default Motor Voltage', 'type': 'int', 'value': 30},
+                    {'name': 'Default Motor Voltage', 'type': 'int', 'value': 50},
                     {'name': 'Movement Duration', 'type': 'float', 'value': 0.5},
+                    {'name': 'NSteps', 'type': 'int', 'value': 1},
                     ]},
-                {'name': 'Camera', 'type': 'group', 'expanded' : True, 'children': [
+                {'name': 'Camera', 'type': 'group', 'expanded' : False, 'children': [
                     {'name': 'N frames', 'type': 'int', 'value': 100},
                     {'name': 'Width', 'type': 'int', 'value': 320},
                     {'name': 'Height', 'type': 'int', 'value': 240},
@@ -210,19 +211,24 @@ class RemoteControl(gui.VisexpmanMainWindow):
             
     def move(self,direction):
         p=self.settings.get_parameter_tree(True)
+        s=p['NSteps']
+        if s>0:
+            self.cmd('goto,{0}'.format(s))
         v=p['Default Motor Voltage']
         t=p['Movement Duration']
         d=1 if direction else -1
         self.set_motor(d*v,d*v)
-        time.sleep(t)
-        self.cmd('stop')
-        
+        if s==0:
+            time.sleep(t)
+            self.cmd('stop')
+#        self.read_steps_action()
+            
     def turn(self,direction):
         p=self.settings.get_parameter_tree(True)
         v=p['Default Motor Voltage']
         t=p['Movement Duration']
         d=1 if direction else -1
-        self.set_motor(d*v,-d*v)
+        self.set_motor(d*v*1.5,-d*v*0)
         time.sleep(t)
         self.cmd('stop')
             
@@ -240,6 +246,10 @@ class RemoteControl(gui.VisexpmanMainWindow):
         
     def run_maneuver_action(self):
         pass
+        
+    def read_steps_action(self):
+        self.log('steps '+self.cmd('read_steps'))
+
             
     def exit_action(self):
         
@@ -275,6 +285,25 @@ class RemoteControl(gui.VisexpmanMainWindow):
             p.start()
         else:
             send_capture_command(**pars)
+        
+    def eval(self,res):
+        values=[]
+        x=[]
+        y=[]
+        for line in res.replace('\x00','').split('\r\n')[:-2]:
+            if '\r' in line:
+                lines=line.split('\r')
+            else:
+                lines=[line]
+            for l in lines:
+                r=map(int, l.split(','))
+                if r[0]<500e6 and r[1]<100e6:
+                    x.append(r[0])
+                    y.append(r[1])
+                
+        from pylab import plot,show
+        plot(x,y, 'x-');show()
+        return x,y
         
         
 def send_capture_command(**pars):
@@ -335,6 +364,9 @@ class VideoStreamer(multiprocessing.Process):
             except:
                 if 0: logging.error(traceback.format_exc())
         sock.close()
+    
+    
+                
 
 if __name__ == '__main__':
     RemoteControl()

@@ -11,6 +11,8 @@
 
 #define PW2REG(pulsewidth) (uint16_t)((uint32_t)(pulsewidth*PWM_PERIOD_REGISTER_VALUE)/1000)
 
+#define GOTO_OFF 0xFFFFFFFF
+
 USART_data_t USART_data;
 
 ISR(USARTC0_RXC_vect)
@@ -26,14 +28,19 @@ ISR(USARTC0_DRE_vect)
 
 Board2HostInterface::Board2HostInterface(void)
 {
+    goto_steps=GOTO_OFF;
+
     init_clock();
     init_uart();
     init_microsecond_timer();
     init_adc();
     init_pwm();
     init_external_interrupts();
+    init_input_capture();
 //PORTD.DIRCLR|=1<<3;
 
+    
+    
 
     sei();
     PORTB.DIRSET = 1<<GREEN_LED | 1 << RED_LED | 1<< IR_RIGHT | 1<<IR_LEFT; 
@@ -168,7 +175,7 @@ void Board2HostInterface::init_external_interrupts(void)
     PORTD.INT0MASK|=1<<RPM_RIGHT_PIN;//|1<<RPM_LEFT_PIN;
     //By default both edges are triggered
     //PORTD.PIN0CTRL|=0x0;//0x1rising edge, 0x2 would be falling edge, 0x0: both edges
-    PORTD.PIN1CTRL|=0x1;//right side (pcb top)
+    PORTD.PIN1CTRL|=0x2;//right side (pcb top)
     PORTD.INTCTRL|=0x2; //int0 enabled
     PMIC.CTRL |= PMIC_MEDLVLEN_bm;
     right_wheel_counter=0;
@@ -181,15 +188,49 @@ void Board2HostInterface::init_external_interrupts(void)
 void Board2HostInterface::external_interrupt_isr(void)
 {
 //    *this<< "ISR "<<right_wheel_counter++<<"\r\n";
-    right_wheel_counter++;
-    /*left_wheel_counter++;
-    left_wheel_timestamp_prev=left_wheel_timestamp;
-    left_wheel_timestamp=micros();*/
     right_wheel_timestamp_prev=right_wheel_timestamp;
     right_wheel_timestamp=micros();
+  //  *this<<right_wheel_timestamp<<","<<right_wheel_timestamp-right_wheel_timestamp_prev<<"\r\n";
+    if ((right_wheel_timestamp-right_wheel_timestamp_prev)>400000)
+    {
+        SET_GREEN_LED;
+        right_wheel_counter++;
+        //*this<<"Inc"<<"\r\n";
+//        _delay_ms(30);
+        CLEAR_GREEN_LED;
+        if (right_wheel_counter>=goto_steps)
+        {
+            goto_steps=GOTO_OFF;
+            stop();
+        }
+    }
 
 
 }
+
+void Board2HostInterface::init_input_capture(void)
+{
+    TCD0.CTRLA=0x5;//DIV64 selected, 32 us one clock period. 1 cm=58 us
+    TCD0.CTRLB=0x80;//enable capture channel D
+    TCD0.CTRLD=0xA0|0xE;//enable pulse width capture and event channel 6
+    PORTD.DIRCLR=(1<<3);
+    EVSYS.CH6MUX = EVSYS_CHMUX_PORTD_PIN3_gc;
+    PORTD.PIN3CTRL = 0x0;
+    PORTD.OUTSET = 1<<2;//Portd, pin2 output, ultrasound trigger
+}
+
+uint16_t Board2HostInterface::measure_pulse_width(void)
+{
+    uint16_t distance;
+    PORTD.OUTSET = 1<<2;
+    _delay_ms(1);
+    PORTD.OUTCLR = 1<<2;
+    _delay_ms(25);
+    distance=TCD0.CCD;
+    return distance;
+
+}
+
 void Board2HostInterface::putbyte(char c)
 {
     USART_TXBuffer_PutByte(&USART_data, c);
@@ -306,11 +347,22 @@ void Board2HostInterface::dispatch_commands(void)
             *this<<t2-t1<<"\r\n";
         }
         else if ((strcmp(command, "read_steps") == 0)&&(nparams==0))
-	{
-	    *this<<right_wheel_counter<<","<<right_wheel_timestamp <<"\r\n";
+    	{
+	    *this<<right_wheel_counter <<"\r\n";
 	    /**this<<right_wheel_timestamp_prev<<","<<left_wheel_timestamp_prev <<"\r\n";
 	    *this<<right_wheel_timestamp<<","<<left_wheel_timestamp <<"\r\n";*/
-	}
+	    }
+        else if ((strcmp(command, "goto") == 0)&&(nparams==1))
+        {
+            goto_steps=right_wheel_counter+(uint32_t)par[0];
+            *this<<goto_steps<<"\r\n";
+        }
+        else if ((strcmp(command, "distance") == 0)&&(nparams==0))
+        {
+
+            *this<<measure_pulse_width()<<"\r\n";
+        }
+
         else
         {
           *this<<"unknown command\r\n";
