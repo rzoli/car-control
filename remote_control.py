@@ -1,15 +1,21 @@
 from PIL import Image
-import numpy,scipy
-import Queue
+import numpy,scipy,socket
 import os
 import time
 import tempfile
 import logging
 import sys
 import traceback
-import PyQt4.Qt as Qt
-import PyQt4.QtGui as QtGui
-import PyQt4.QtCore as QtCore
+try:
+    import PyQt4.Qt as Qt
+    import PyQt4.QtGui as QtGui
+    import PyQt4.QtCore as QtCore
+    import Queue
+except:
+    import PyQt5.Qt as Qt
+    import PyQt5.QtGui as QtGui
+    import PyQt5.QtCore as QtCore
+    import queue as Queue
 from visexpman.engine.generic import gui, fileop,utils
 from motor_drive.firmware_test import parse_firmware_config
 import multiprocessing
@@ -23,13 +29,23 @@ ADC_CALIB=numpy.array([
 
 def excepthook(excType, excValue, tracebackobj):
     msg='\n'.join(traceback.format_tb(tracebackobj))+str(excType.__name__)+': '+str(excValue)
-    print msg
+    print (msg)
     error_messages.put(msg)
     
 sys.excepthook = excepthook
 
 
 error_messages = Queue.Queue()
+
+def socket_client(cmd, ip, port=20000):
+    print(cmd)
+    client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client.settimeout(1)
+    client.connect((ip, port))
+    client.send(cmd.encode())
+    from_server = client.recv(4096)
+    client.close()
+    return from_server.decode('utf-8')
 
 class RemoteControl(gui.VisexpmanMainWindow):
     def __init__(self):
@@ -95,11 +111,19 @@ class RemoteControl(gui.VisexpmanMainWindow):
             QtCore.QCoreApplication.instance().exec_()
             
     def cmd(self,cmd, pars=[]):
-        self.s.write(cmd)
-        if len(pars)>0:
-                self.s.write(',{0}'.format(','.join(map(str,pars))))
-        self.s.write('\r\n')
-        return self.s.readline()
+        if self.setting_values['params/Microcontroller/Connection'] == 'tcp/ip':
+            ip=self.setting_values['params/Microcontroller/Serial port']
+            cmdout=cmd
+            if len(pars)>0:
+                cmdout+=',{0}'.format(','.join(map(str,pars)))
+            cmdout+='\r\n'
+            return socket_client(cmdout, ip)
+        elif self.setting_values['params/Microcontroller/Connection'] == 'serial port':
+            self.s.write(cmd)
+            if len(pars)>0:
+                    self.s.write(',{0}'.format(','.join(map(str,pars))))
+            self.s.write('\r\n')
+            return self.s.readline()
             
     def get_image(self):
         if not self.imageq.empty():
@@ -121,8 +145,8 @@ class RemoteControl(gui.VisexpmanMainWindow):
     def _get_params_config(self):
         pc =  [
                 {'name': 'Microcontroller', 'type': 'group', 'expanded' : True, 'children': [
-                    {'name': 'Serial port', 'type': 'str', 'value': '/dev/ttyUSB0'},
-                    {'name': 'Connection', 'type': 'list', 'values': ['serial port', 'tcp/ip'], 'value': 'serial port'},
+                    {'name': 'Serial port', 'type': 'str', 'value': '192.168.1.11'},
+                    {'name': 'Connection', 'type': 'list', 'values': ['serial port', 'tcp/ip'], 'value': 'tcp/ip'},
                     {'name': 'Timeout', 'type': 'float', 'value': 0.5, 'suffix': 's'},
                     ]},
                 {'name': 'Vehicle', 'type': 'group', 'expanded' : True, 'children': [
@@ -148,18 +172,18 @@ class RemoteControl(gui.VisexpmanMainWindow):
         if hasattr(self, 'setting_values'):
             #Check if LED status was changed
             for pn in [k for k in parse_firmware_config().keys() if 'LED' in k]:
-                state=new_values[pn]
-                if self.setting_values[pn]!=state:
+                state=new_values['params/Microcontroller/'+pn]
+                if self.setting_values['params/Microcontroller/'+pn]!=state:
                     self.cmd(pn[:-4].lower(),[int(state)])
         self.setting_values = new_values
         
     def connect_action(self):
-        if self.setting_values['Connection'] == 'serial port':
+        if self.setting_values['params/Microcontroller/Connection'] == 'serial port':
             if hasattr(self,'s'):
                 self.log('Already open')
                 return
             import serial
-            self.s=serial.Serial(self.setting_values['Serial port'], timeout=self.setting_values['Timeout'], baudrate=parse_firmware_config()['BAUD'])
+            self.s=serial.Serial(self.setting_values['params/Microcontroller/Serial port'], timeout=self.setting_values['params/Microcontroller/Timeout'], baudrate=parse_firmware_config()['BAUD'])
             self.log('Connected')
         
     def echo_action(self):
@@ -186,7 +210,7 @@ class RemoteControl(gui.VisexpmanMainWindow):
     def set_motor_action(self):
         if hasattr(self, 's'):
             return
-            if self.setting_values['Motor Mode']=='wheels':
+            if self.setting_values['params/Vehicle/Motor Mode']=='wheels':
                 new_values=self.settings.get_parameter_tree(True)
                 pn1='Wheel voltage'
                 pn2='Wheels voltage difference'
@@ -197,11 +221,11 @@ class RemoteControl(gui.VisexpmanMainWindow):
                 else:
                     v2=v+d
                 self.mc.set_motors(v-d/2,v+d/2)
-            elif self.setting_values['Motor Mode']=='voltage':
-                self.mc.set_motors(int(self.setting_values['Motor1 voltage'])*10,int(self.setting_values['Motor2 voltage'])*10)
+            elif self.setting_values['params/Vehicle/Motor Mode']=='voltage':
+                self.mc.set_motors(int(self.setting_values['params/Vehicle/Motor1 voltage'])*10,int(self.setting_values['params/Vehicle/Motor2 voltage'])*10)
                 
     def read_adc_action(self):
-        if hasattr(self, 's'):
+        if hasattr(self, 's') or self.setting_values['params/Microcontroller/Connection'] == 'tcp/ip':
             raw_adc=self.cmd('read_vbatt')
             self.log('battery voltage is {0} V'.format(self.lut(raw_adc)))
             
@@ -211,11 +235,11 @@ class RemoteControl(gui.VisexpmanMainWindow):
             
     def move(self,direction):
         p=self.settings.get_parameter_tree(True)
-        s=p['NSteps']
+        s=p['params/Vehicle/NSteps']
         if s>0:
             self.cmd('goto,{0}'.format(s))
-        v=p['Default Motor Voltage']
-        t=p['Movement Duration']
+        v=p['params/Vehicle/Default Motor Voltage']
+        t=p['params/Vehicle/Movement Duration']
         d=1 if direction else -1
         self.set_motor(d*v,d*v)
         if s==0:
@@ -225,8 +249,8 @@ class RemoteControl(gui.VisexpmanMainWindow):
             
     def turn(self,direction):
         p=self.settings.get_parameter_tree(True)
-        v=p['Default Motor Voltage']
-        t=p['Movement Duration']
+        v=p['params/Vehicle/Default Motor Voltage']
+        t=p['params/Vehicle/Movement Duration']
         d=1 if direction else -1
         self.set_motor(d*v*1.5,-d*v*0)
         time.sleep(t)
@@ -342,7 +366,7 @@ class VideoStreamer(multiprocessing.Process):
         framect=0
         while True:
             if not self.command.empty():  
-                print self.command.get()
+                print (self.command.get())
                 break
             try:
                 data, addr = sock.recvfrom(int(2**16))

@@ -210,23 +210,32 @@ void Board2HostInterface::external_interrupt_isr(void)
 
 void Board2HostInterface::init_input_capture(void)
 {
+    TCD0.CTRLB=0x10;//enable capture channel A
+    TCD0.CTRLD=0xC0|0x8;//enable pulse width capture and event channel 0
+    PORTD.DIRCLR=1<<3;
+    EVSYS.CH0MUX = 0x6B;//portd pin 3 channel
+    //PORTD.PIN3CTRL = 0x0;//pulldown
+    PORTD.DIRSET = 1<<2;//Portd, pin2 output, ultrasound trigger
     TCD0.CTRLA=0x5;//DIV64 selected, 32 us one clock period. 1 cm=58 us
-    TCD0.CTRLB=0x80;//enable capture channel D
-    TCD0.CTRLD=0xA0|0xE;//enable pulse width capture and event channel 6
-    PORTD.DIRCLR=(1<<3);
-    EVSYS.CH6MUX = EVSYS_CHMUX_PORTD_PIN3_gc;
-    PORTD.PIN3CTRL = 0x0;
-    PORTD.OUTSET = 1<<2;//Portd, pin2 output, ultrasound trigger
 }
 
 uint16_t Board2HostInterface::measure_pulse_width(void)
 {
     uint16_t distance;
+    uint32_t t0,t1,ts;
+    TCD0.CNT=0;
     PORTD.OUTSET = 1<<2;
-    _delay_ms(1);
+
+    //EVSYS.STROBE=1;
+    _delay_ms(10);
+//    *this << (PORTD.IN) << " "<< PORTD.DIR<< "ii\r\n";
     PORTD.OUTCLR = 1<<2;
+
     _delay_ms(25);
-    distance=TCD0.CCD;
+/*    *this << (PORTD.IN) << " ii\r\n";
+    *this << TCD0.CNT << " " << TCD0.CCA << " " << TCD0.INTFLAGS << "\r\n";*/
+    distance=TCD0.CCA;
+    distance=TCD0.CCA;
     return distance;
 
 }

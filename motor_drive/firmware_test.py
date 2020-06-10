@@ -15,10 +15,13 @@ def parse_firmware_config():
     config = {}
     for value in values:
         if len(value) == 2 and '//' not in value[0]:
-            import string
-            all=string.maketrans('','')
-            nodigs=all.translate(all, string.digits)
-            converted_value = value[1].translate(all, nodigs)
+            try:
+                import string
+                all=string.maketrans('','')
+                nodigs=all.translate(all, string.digits)
+                converted_value = value[1].translate(all, nodigs)
+            except:
+                converted_value = ''.join([si for si in value[1] if si.isdigit() or si =='.'])
             if '.' in value[1]:
                 converted_value = float(converted_value)
             else:
@@ -169,7 +172,7 @@ class FirmwareTester(unittest.TestCase):
         res = self.mc.echo(int(random.random()*255))
         dt = time.time()-t0
         self.echo_response_time=dt
-        print dt
+        print (dt)
         self.assertLess(dt, self.serial_port_timeout +0.1)
         self.assertTrue(res)
         

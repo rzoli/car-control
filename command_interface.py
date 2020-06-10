@@ -6,7 +6,11 @@ import os
 import serial
 import threading
 import time
-import Queue
+try:
+    import Queue
+except:
+    import queue as Queue
+
 import unittest
 
 class ProtocolHandler(object):
